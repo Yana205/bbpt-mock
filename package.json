@@ -1,0 +1,12 @@
+{
+  "name": "bunny-boo-testbed",
+  "private": true,
+  "scripts": {
+    "build": "node build.js",
+    "test": "playwright test",
+    "serve": "npx serve ."
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.47.0"
+  }
+}
