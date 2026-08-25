@@ -3,6 +3,9 @@
 Smallest testable version of *Bunny Boo Play Time* (Brackeys Jam 2026.2, "Trust No One").
 One file, no build step: open `index.html` or drop it on itch.io as an HTML5 game.
 
+**Play it live:** <https://yana205.github.io/bbpt-mock/> — designer view: [`?mode=designer`](https://yana205.github.io/bbpt-mock/?mode=designer).
+Every push to `main` rebuilds `index.html` from `src/page.html` and redeploys via GitHub Actions.
+
 ## What it is for
 It is a **test instrument** for the GDD's open questions, not the final game:
 1. Which tell type reads best? → **TELL LAB** (10 rapid claims, score screen).
