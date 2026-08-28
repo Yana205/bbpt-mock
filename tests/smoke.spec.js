@@ -133,6 +133,7 @@ test('examining the bunny repeats the claim and re-fires the tell', async ({ pag
   await page.evaluate(() => BB.press('KeyZ')); await page.waitForTimeout(100);   // finish line 1
   await page.evaluate(() => BB.press('KeyZ')); await page.waitForTimeout(400);   // advance to the claim line → tell
   await page.waitForFunction(n => BB.session.events.filter(e => e.type === 'tell').length > n, before, { timeout: 5000 });
+  expect(await page.evaluate(() => BB.state.tellSeen)).toBe(true); // first-tell teach consumed
 });
 
 test('floor 2 gallery: rabbit/girl doors, wall scratch contradicts the bunny', async ({ page }) => {
@@ -174,7 +175,7 @@ test('three notes assemble the invitation: secret ending fires', async ({ page }
   await page.waitForFunction(() => BB.session.events.some(e => e.type === 'ending' && e.secret === true), null, { timeout: 5000 });
 });
 
-test('doll room: Space swings mid-fight, and the locked exit can be forced for a petal', async ({ page }) => {
+test('doll room: Space swings mid-fight, and the locked exit can be fled for free', async ({ page }) => {
   await page.goto(url + '?room=dollroom&seed=1&combat=1&dollSpeed=0&mode=designer');
   await waitRoom(page, 'dollroom');
   await skip(page);
@@ -183,11 +184,12 @@ test('doll room: Space swings mid-fight, and the locked exit can be forced for a
   await page.evaluate(() => { BB.teleport(100, 120); BB.press('Space'); });
   await page.waitForFunction(() => BB.state.atk.cd > 0);
   expect(await page.evaluate(() => BB.dialogOpen())).toBe(false);
-  // at the locked exit, Z forces the door: −1 petal, on to floor 3
+  // at the locked exit, Z flees: free by default, on to floor 3
   await page.evaluate(() => { BB.teleport(148, 30); BB.press('KeyZ'); });
-  await page.waitForFunction(() => BB.state.petals === 2);
+  await page.waitForFunction(() => BB.dialogOpen());
   await skip(page);
   await waitRoom(page, 'floor3');
+  expect(await page.evaluate(() => BB.state.petals)).toBe(3); // flee cost nothing
 });
 
 test('floor 2 after punishment: claim re-rolls and the doors work again', async ({ page }) => {
@@ -201,8 +203,8 @@ test('floor 2 after punishment: claim re-rolls and the doors work again', async 
   await skip(page);
   await waitRoom(page, 'dollroom');
   await skip(page);
-  await page.evaluate(() => { BB.teleport(148, 30); BB.press('KeyZ'); }); // flee the punishment (−1 petal)
-  await page.waitForFunction(() => BB.state.petals === 1);
+  await page.evaluate(() => { BB.teleport(148, 30); BB.press('KeyZ'); }); // flee the punishment (free)
+  await page.waitForFunction(() => BB.dialogOpen());
   await skip(page);
   await waitRoom(page, 'floor2');
   await skip(page);

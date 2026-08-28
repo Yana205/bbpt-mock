@@ -20,6 +20,8 @@ It is a **test instrument** for the GDD's open questions, not the final game:
 
 Any config key works as a URL param. `?room=lab` boots straight into the lab. A `?seed=` link opens with the rail hidden (playtest mode).
 
+**Playtest mode is clean by design:** object labels appear only when the player is near them, and the floor caption, rule line, flow strip, and room tabs are designer-only. The first tell of a run lingers longer (`firstTellMs`, default 900 ms) — the teach is visual, no tutorial text.
+
 ## Reading a room (designer mode)
 Top-left of the canvas: `FLOOR n · TEACH/CONTRADICT/BETRAY`. Every object is labelled and colour-typed: **pick** objects (chests, doors, cups — the thing the claim is about) are lilac boxes; **clues** (wall note, mirror) are pale with lines; **collectibles** (torn notes) are pale with red lines; locked doors are dark with a red pip.
 
@@ -43,7 +45,7 @@ Trimmed from nine experiments to the three configurations the shipped game could
 | preset (`?scenario=`) | what it is | the decision it answers |
 |---|---|---|
 | **A — GDD baseline** (`teach`) | F1 always lies (tell) / F2 coin flip vs the wall scratch / F3 always lies, mirror is the only tell. No combat. | Does the designed teach→contradict→betray arc land? |
-| **B — Combat on** (`fight`) | Same arc, plus wrong trust → 2-doll punishment room, mandatory 3-doll playroom on floor 2. | Keep or cut combat by Friday? |
+| **B — Combat on** (`fight`) | Same arc, plus wrong trust → 2-doll punishment room, mandatory 3-doll playroom on floor 2. Fleeing via the exit is free (`flee`). | Keep or cut combat by Friday? |
 | **C — Double bluff** (`bluff`) | Coin-flip lies, tells everywhere, 30% false tells on honest lines. | Is "even the tell lies" fun or just unfair? |
 
 Editing any lie/tell/wrong cell switches the preset to *custom*; SHARE LINK carries it. `?scenario=bluff&seed=9` applies a preset from the URL.

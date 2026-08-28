@@ -38,5 +38,5 @@ ENTER room
 `teach` (A — GDD baseline) · `fight` (B — combat on, doll punishment) · `bluff` (C — double bluff, 30% false tells). Picking a preset restarts the run. Anything else is reachable by hand-editing the per-floor grid (→ *custom*).
 
 ## Config keys
-Session: `mode seed timeScale skipIntro` · Tells: `tellType tellMs tellDelayMs falseTell worldTells repeatTell tellInWorld` · Per floor n∈0..3: `lie{n} tell{n} wrong{n}` + `note2` · Lab: `labClaims labLie labPetals` · Petals: `petals punishDolls scareMs` · Combat: `combat dolls dollSpeed dollHp atkReach atkActive atkCd knock hurtCd flee` · Player: `speed reach textSpeed` · Palette: `cInk cPlum cMid cLilac cPale cRed`.
+Session: `mode seed timeScale skipIntro` · Tells: `tellType tellMs firstTellMs tellDelayMs falseTell worldTells repeatTell tellInWorld` · Per floor n∈0..3: `lie{n} tell{n} wrong{n}` + `note2` · Lab: `labClaims labLie labPetals` · Petals: `petals punishDolls scareMs` · Combat: `combat dolls dollSpeed dollHp atkReach atkActive atkCd knock hurtCd flee` · Player: `speed reach textSpeed` · Palette: `cInk cPlum cMid cLilac cPale cRed`.
 Any key works as a URL param; `room=` and `scenario=` too.

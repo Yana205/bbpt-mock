@@ -83,6 +83,9 @@ canvas{width:960px;max-width:100%;aspect-ratio:16/9;image-rendering:pixelated;im
 .stats{font-family:var(--fd);font-size:10px;line-height:1.7;color:var(--pale);background:var(--ink);border:1px solid var(--line);padding:6px;margin-top:6px;white-space:pre-wrap}
 .pill{font-family:var(--fd);font-size:10px;letter-spacing:.1em;padding:2px 6px;border:1px solid var(--line);border-radius:3px;color:var(--lilac)}
 .pill.designer{border-color:var(--red);color:#ffb0b4}
+/* playtest = clean: no designer instrumentation on screen */
+.app.pt .rule,.app.pt .flow,.app.pt .flowhelp{display:none}
+.app.pt .tabs{visibility:hidden}
 @media (prefers-reduced-motion:reduce){.dlg .txt.glitch,.dlg .more{animation:none}}
 @media (max-width:900px){.app{grid-template-columns:1fr}.rail{max-height:none}}
 </style>
@@ -121,6 +124,7 @@ canvas{width:960px;max-width:100%;aspect-ratio:16/9;image-rendering:pixelated;im
     <p class="sub" id="scenDesc" style="margin:4px 0 6px"></p>
     <div class="row"><label>Tell type</label><select data-cfg="tellType"><option value="faceflip">face flip</option><option value="redpixel">red pixel eyes</option><option value="textglitch">text glitch</option><option value="candle">candle flicker</option><option value="none">none</option></select></div>
     <div class="row"><label>Tell duration ms</label><input type="number" data-cfg="tellMs" step="50"></div>
+    <div class="row"><label>First tell ms (the visual teach)</label><input type="number" data-cfg="firstTellMs" step="50" min="0"></div>
     <div class="row"><label>Tell delay ms (after line starts)</label><input type="number" data-cfg="tellDelayMs" step="50" min="0"></div>
     <div class="row"><label>False-tell chance (tell on a truth)</label><input type="number" data-cfg="falseTell" step="0.1" min="0" max="1"></div>
     <div class="row"><label>World tells (notes/candles)</label><input type="checkbox" data-cfg="worldTells"></div>
@@ -203,7 +207,7 @@ canvas{width:960px;max-width:100%;aspect-ratio:16/9;image-rendering:pixelated;im
     <div class="more" id="more">▼</div>
   </div>
   <div class="rule" id="rule"></div>
-  <div class="help" style="margin-top:-6px"><span>LIVE FLOW · not buttons — fills in as you play: talk to the speaker → watch the tell → pick → see the result</span></div>
+  <div class="help flowhelp" style="margin-top:-6px"><span>LIVE FLOW · not buttons — fills in as you play: talk to the speaker → watch the tell → pick → see the result</span></div>
   <div class="flow" id="flow">
     <div class="n" id="f0"><div class="k">1 ENTER</div><div class="v">—</div></div>
     <div class="n" id="f1"><div class="k">2 CLAIM</div><div class="v">—</div></div>
@@ -223,14 +227,14 @@ const ART={};const ASSETS={"bunnyOk": "data:image/png;base64,iVBORw0KGgoAAAANSUh
 for(const k in ASSETS){const i=new Image();i.src=ASSETS[k];ART[k]=i;}
 /* ---------- CONFIG ---------- */
 const DEF={mode:'playtest',seed:1,timeScale:1,skipIntro:false,
- tellType:'faceflip',tellMs:350,tellDelayMs:0,falseTell:0,worldTells:true,repeatTell:true,tellInWorld:false,
+ tellType:'faceflip',tellMs:350,firstTellMs:900,tellDelayMs:0,falseTell:0,worldTells:true,repeatTell:true,tellInWorld:false,
  lie0:1,tell0:true,wrong0:'none',lie1:1,tell1:true,wrong1:'petal',lie2:0.5,tell2:true,wrong2:'petal',lie3:1,tell3:false,wrong3:'petal',note2:'contradict',scenario:'teach',
  labClaims:10,labLie:0.5,labPetals:false,
  petals:3,punishDolls:2,scareMs:600,
- combat:false,dolls:3,dollSpeed:28,dollHp:1,atkReach:14,atkActive:120,atkCd:380,knock:18,hurtCd:900,flee:'petal',
+ combat:false,dolls:3,dollSpeed:28,dollHp:1,atkReach:14,atkActive:120,atkCd:380,knock:18,hurtCd:900,flee:'free',
  speed:60,reach:14,textSpeed:40,cInk:'#0e0a14',cPlum:'#241a3a',cMid:'#4a3a6b',cLilac:'#9a86c4',cPale:'#d9cfee',cRed:'#c8262e'};
 let CFG={...DEF};
-try{const s=localStorage.getItem('bb.cfg');if(s){const o=JSON.parse(s);delete o.tellFloor3;delete o.punishCombat;CFG={...DEF,...o};}}catch(e){}
+try{const s=localStorage.getItem('bb.cfg');if(s){const o=JSON.parse(s);delete o.tellFloor3;delete o.punishCombat;if(o.flee==='petal')delete o.flee;CFG={...DEF,...o};}}catch(e){}
 // URL params override everything (share links): ?seed=42&tellType=redpixel&mode=playtest&room=lab
 const URLP=new URLSearchParams(location.search);let urlRoom=null;let urlScen=URLP.get('scenario');
 for(const [k,v] of URLP){if(k==='room'){urlRoom=v;continue;}if(!(k in DEF))continue;const d=DEF[k];CFG[k]=typeof d==='boolean'?(v==='1'||v==='true'):typeof d==='number'?parseFloat(v):v;}
@@ -239,7 +243,7 @@ function syncInputs(){inputs.forEach(i=>{const k=i.dataset.cfg;if(i.type==='chec
 function saveCfg(){try{localStorage.setItem('bb.cfg',JSON.stringify(CFG));}catch(e){}}
 inputs.forEach(i=>i.addEventListener('input',()=>{const k=i.dataset.cfg;CFG[k]=i.type==='checkbox'?i.checked:((i.type==='number'||i.type==='range')?parseFloat(i.value):i.value);saveCfg();if(k==='mode')applyMode();if(/^(lie|tell|wrong|note2|falseTell|tellDelayMs|combat|worldTells)/.test(k)&&CFG.scenario!=='custom'){CFG.scenario='custom';saveCfg();syncScenario();}ruleLine();if(k==='petals'){G.petals=Math.min(G.petals,CFG.petals);hud();}}));
 const app=document.getElementById('app');
-function applyMode(){const d=CFG.mode==='designer';document.getElementById('mPlay').className=d?'':'cur';document.getElementById('mEdit').className=d?'cur edit':'';document.getElementById('hudMode').textContent=d?'DESIGNER':'PLAYTEST';document.getElementById('hudMode').className='pill'+(d?' designer':'');renderLog();}
+function applyMode(){const d=CFG.mode==='designer';app.classList.toggle('pt',!d);document.getElementById('mPlay').className=d?'':'cur';document.getElementById('mEdit').className=d?'cur edit':'';document.getElementById('hudMode').textContent=d?'DESIGNER':'PLAYTEST';document.getElementById('hudMode').className='pill'+(d?' designer':'');renderLog();}
 addEventListener('keydown',e=>{if(e.code==='Backquote'){app.classList.toggle('norail');e.preventDefault();}});
 document.getElementById('bDefaults').onclick=()=>{CFG={...DEF};syncInputs();try{localStorage.removeItem('bb.cfg')}catch(e){};log('config → factory','sys');};
 document.getElementById('bCopy').onclick=()=>copyText(JSON.stringify(CFG,null,2),'config copied');
@@ -311,9 +315,9 @@ function updateDialog(dt){if(!D)return;const line=D.lines[D.i];D.shown=Math.min(
  document.getElementById('more').style.visibility=D.shown>=line.length?'visible':'hidden';
  if(actPressed){actPressed=false;if(D.shown<line.length)D.shown=line.length;else{D.i++;D.shown=0;if(D.i>=D.lines.length)endDialog();}}}
 let tellVis=false,tellTimer=0;
-function fireTell(){const t=CFG.tellType;if(t==='none')return;log(`tell fired: ${t} (${CFG.tellMs}ms)`,'lie',true);rec('tell',{tellType:t,ms:CFG.tellMs});tellVis=true;tellTimer=CFG.tellMs/1000;
+function fireTell(){const t=CFG.tellType;if(t==='none')return;const ms=(!G.tellSeen&&CFG.firstTellMs>0)?Math.max(CFG.firstTellMs,CFG.tellMs):CFG.tellMs;G.tellSeen=true;log(`tell fired: ${t} (${ms}ms${ms!==CFG.tellMs?' · first-tell teach':''})`,'lie',true);rec('tell',{tellType:t,ms});tellVis=true;tellTimer=ms/1000;
  if(t==='textglitch'){txt.classList.remove('glitch');void txt.offsetWidth;txt.classList.add('glitch');}
- if(t==='candle'){G.candleFlicker=CFG.tellMs/1000;}
+ if(t==='candle'){G.candleFlicker=ms/1000;}
  drawPortrait(true);}
 function drawPortrait(wrong){const p=pc;p.imageSmoothingEnabled=false;p.fillStyle=CFG.cPlum;p.fillRect(0,0,32,32);
  if(!D)return;const sp=D.speaker;
@@ -330,7 +334,7 @@ function drawPortrait(wrong){const p=pc;p.imageSmoothingEnabled=false;p.fillStyl
 
 /* ---------- GAME STATE ---------- */
 const W=320,H=180;const ctx=cv.getContext('2d');ctx.imageSmoothingEnabled=false;
-const G={room:null,petals:CFG.petals,notes:new Set(),player:{x:160,y:120,w:10,h:14,dir:'down',hurt:0},dolls:[],atk:{t:0,cd:0},scare:0,fade:0,candleFlicker:0,busy:false,returnTo:null,fromPunish:false,reveal:false,key:false};
+const G={room:null,petals:CFG.petals,notes:new Set(),player:{x:160,y:120,w:10,h:14,dir:'down',hurt:0},dolls:[],atk:{t:0,cd:0},scare:0,fade:0,candleFlicker:0,busy:false,returnTo:null,fromPunish:false,reveal:false,key:false,tellSeen:false};
 const R={};const order=['lab','teaparty','floor1','floor2','dollroom','floor3','ending'];
 const roomSel=document.getElementById('roomSel');const TABN={teaparty:'TEA PARTY',floor1:'FLOOR 1',floor2:'FLOOR 2',dollroom:'DOLLS',floor3:'FLOOR 3',ending:'ENDING',lab:'TELL LAB'};
 const tabsEl=document.getElementById('tabs');
@@ -345,7 +349,7 @@ document.getElementById('cPetal').onclick=()=>{G.petals=Math.min(CFG.petals,G.pe
 document.getElementById('cDolls').onclick=()=>{G.dolls=[];log('cheat: dolls cleared','sys');};
 document.getElementById('cUnlock').onclick=()=>{if(G.room)G.room.doors.forEach(d=>d.locked=false);log('cheat: doors unlocked','sys');};
 document.getElementById('cReveal').onclick=e=>{G.reveal=!G.reveal;e.target.classList.toggle('on',G.reveal);log(`cheat: reveal truth ${G.reveal?'on':'off'}`,'sys');};
-function resetRun(){reseed();G.petals=CFG.petals;G.key=false;G.notes.clear();G.fromPunish=false;G.returnTo=null;log(`— run reset (seed ${CFG.seed}) —`,'sys');rec('reset',{seed:CFG.seed});goto(CFG.skipIntro?'floor1':'teaparty');}
+function resetRun(){reseed();G.petals=CFG.petals;G.key=false;G.notes.clear();G.fromPunish=false;G.returnTo=null;G.tellSeen=false;log(`— run reset (seed ${CFG.seed}) —`,'sys');rec('reset',{seed:CFG.seed});goto(CFG.skipIntro?'floor1':'teaparty');}
 
 function rect(x,y,w,h,c){ctx.fillStyle=c;ctx.fillRect(x,y,w,h);}
 function mkRoom(name,build){R[name]={name,build};}
@@ -492,7 +496,7 @@ function hitbox(){const p=G.player,r=CFG.atkReach;if(p.dir==='left')return{x:p.x
 function overlap(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;}
 
 /* ---------- DRAW ---------- */
-function label(t,cx,y,hot){ctx.font='7px monospace';ctx.textAlign='center';ctx.fillStyle=hot?CFG.cPale:CFG.cLilac;ctx.fillText(t,Math.round(cx),Math.round(y));ctx.textAlign='left';}
+function label(t,cx,y,hot){if(CFG.mode!=='designer'&&!hot)return;ctx.font='7px monospace';ctx.textAlign='center';ctx.fillStyle=hot?CFG.cPale:CFG.cLilac;ctx.fillText(t,Math.round(cx),Math.round(y));ctx.textAlign='left';}
 function drawItem(it){const k=it.kind||'npc';
  if(k==='pick'){if(it.pillow){if(it.open){rect(it.x-3,it.y-4,it.w,it.h,CFG.cPale);rect(it.x+4,it.y+3,6,2,CFG.cPale);rect(it.x+9,it.y+2,2,4,CFG.cPale);}else{rect(it.x,it.y,it.w,it.h,CFG.cPale);rect(it.x+2,it.y+2,it.w-4,1,CFG.cLilac);}}
   else if(it.id.startsWith('left')||it.id.startsWith('right')){if(it.h>=10){rect(it.x,it.y,it.w,it.h,CFG.cMid);if(it.open){rect(it.x,it.y-4,it.w,3,CFG.cLilac);rect(it.x+2,it.y+2,it.w-4,it.h-4,CFG.cInk);}else{rect(it.x,it.y,it.w,4,CFG.cLilac);rect(it.x+it.w/2-1,it.y+5,2,3,CFG.cPale);}}else{rect(it.x,it.y,it.w,it.h,CFG.cPale);rect(it.x+1,it.y+1,it.w-2,it.h-2,CFG.cLilac);}}}
@@ -514,7 +518,7 @@ function drawItem(it){const k=it.kind||'npc';
  const hot=near(it);if(hot)rect(it.x,it.y-5,it.w,2,CFG.cPale);label(it.label||it.id.toUpperCase(),it.x+it.w/2,it.y+it.h+9,hot);}
 function draw(){rect(0,0,W,H,CFG.cInk);const room=G.room;if(!room)return;room.draw&&room.draw();
  if(room.candle&&CFG.worldTells){const f=G.candleFlicker>0&&Math.floor(performance.now()/60)%2===0;rect(room.candle.x-1,room.candle.y,2,6,CFG.cPale);rect(room.candle.x-1,room.candle.y-3,2,3,f?CFG.cInk:CFG.cRed);label('CANDLE',room.candle.x,room.candle.y+13,false);}
- if(room.floor!=null){ctx.font='8px monospace';ctx.fillStyle=CFG.cLilac;ctx.fillText(`FLOOR ${room.floor} · ${['TEA PARTY','TEACH','CONTRADICT','BETRAY'][room.floor]}`,44,14);}else{ctx.font='8px monospace';ctx.fillStyle=CFG.cLilac;ctx.fillText(room.name.toUpperCase(),44,14);}
+ if(CFG.mode==='designer'){if(room.floor!=null){ctx.font='8px monospace';ctx.fillStyle=CFG.cLilac;ctx.fillText(`FLOOR ${room.floor} · ${['TEA PARTY','TEACH','CONTRADICT','BETRAY'][room.floor]}`,44,14);}else{ctx.font='8px monospace';ctx.fillStyle=CFG.cLilac;ctx.fillText(room.name.toUpperCase(),44,14);}}
  for(const d of room.doors){rect(d.x-2,d.y-2,d.w+4,d.h+10,CFG.cMid);rect(d.x,d.y,d.w,d.h+6,d.locked?CFG.cInk:CFG.cLilac);if(d.locked){rect(d.x+6,d.y+3,4,4,CFG.cRed);}if(near(d))rect(d.x,d.y-5,d.w,2,CFG.cPale);label(d.label||d.id.toUpperCase(),d.x+d.w/2,d.y+d.h+14,near(d));
   if(G.reveal&&room.claim&&d.id===room.claim.truth)rect(d.x+6,d.y+8,4,4,CFG.cRed);}
  for(const it of room.items){if(it.got)continue;drawItem(it);
