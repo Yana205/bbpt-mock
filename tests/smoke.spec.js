@@ -190,6 +190,28 @@ test('doll room: Space swings mid-fight, and the locked exit can be forced for a
   await waitRoom(page, 'floor3');
 });
 
+test('floor 2 after punishment: claim re-rolls and the doors work again', async ({ page }) => {
+  await page.goto(url + '?room=floor2&seed=5&combat=1&wrong2=doll&lie2=1&dollSpeed=0&mode=designer');
+  await waitRoom(page, 'floor2');
+  await skip(page);
+  const truth = await page.evaluate(() => BB.roomClaim().truth);
+  const pos = { rabbit: [62, 30], girl: [246, 30] };
+  await useAt(page, ...pos[truth === 'rabbit' ? 'girl' : 'rabbit']); // wrong on purpose
+  await page.waitForFunction(() => BB.state.petals === 2);
+  await skip(page);
+  await waitRoom(page, 'dollroom');
+  await skip(page);
+  await page.evaluate(() => { BB.teleport(148, 30); BB.press('KeyZ'); }); // flee the punishment (−1 petal)
+  await page.waitForFunction(() => BB.state.petals === 1);
+  await skip(page);
+  await waitRoom(page, 'floor2');
+  await skip(page);
+  const c = await page.evaluate(() => BB.roomClaim());
+  expect(c).not.toBeNull(); // the bug: claim was null after punishment, so doors were dead
+  await useAt(page, ...pos[c.truth]);
+  await waitRoom(page, 'dollroom'); // correct door progresses again
+});
+
 test('top bar: room tabs switch rooms, PLAY/EDIT toggles the rail', async ({ page }) => {
   await page.goto(url + '?seed=1&mode=designer');
   await waitRoom(page, 'teaparty');

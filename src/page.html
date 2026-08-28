@@ -393,8 +393,9 @@ mkRoom('floor1',()=>{ const r={spawn:{x:155,y:140},floor:1,rule:'TEACH THE BITE.
   recDecision(side);
   if(side===r.claim.truth){r.opened=true;r.doors[0].locked=false;r.doors[0].label='EXIT';G.key=true;const ch=r.items.find(i=>i.id===side);ch.label='PILLOW '+(side==='left'?'L':'R')+' (key)';ch.open=true;hud();log('correct pillow → key','ok');flowDecide(side,true,'key → exit unlocked');await say(['A small brass key. The door upstairs clicks.'],null);await say(['"See? Told you."'],'bunny');}
   else{flowDecide(side,false,(CFG['wrong1']==='doll'&&CFG.combat?'petal + doll room':CFG['wrong1']==='scare'?'scare only':'lose a petal'));await wrongTrust('Under the pillow: a clump of hair and a torn ribbon.',CFG.wrong1);}}
- r.onEnter=async()=>{if(G.fromPunish){G.fromPunish=false;await say(['"Oops. Try the other one, then."'],'bunny');r.claim=r.claim||rollClaim('floor1','bunny',['left','right'],s=>`The key's under the ${s.toUpperCase()} pillow. I saw it, go look!`,CFG.lie1,CFG.tell1);return;}
-  r.claim=rollClaim('floor1','bunny',['left','right'],s=>`The key's under the ${s.toUpperCase()} pillow. I saw it, go look!`,CFG.lie1,CFG.tell1);
+ r.onEnter=async()=>{const LINE=s=>`The key's under the ${s.toUpperCase()} pillow. I saw it, go look!`;
+  if(G.fromPunish){G.fromPunish=false;r.claim=rollClaim('floor1','bunny',['left','right'],LINE,CFG.lie1,CFG.tell1);await say(['"Oops. Try again, then."',r.claim.text],'bunny',{tellAt:r.claim.tell?1:-1});return;}
+  r.claim=rollClaim('floor1','bunny',['left','right'],LINE,CFG.lie1,CFG.tell1);
   await say(['You wake on cold stone. Two small beds, names stitched into the blankets.','"Hi! Hi hi. You\'re the new one. Don\'t be scared — I\'ll get you out."',r.claim.text],'bunny',{tellAt:r.claim.tell?2:-1});};
  r.draw=()=>{rect(40,20,240,140,CFG.cPlum);for(let x=44;x<276;x+=16)rect(x,156,8,2,CFG.cMid);
   // two guest beds; the pillows (pick items) sit at their heads
@@ -411,8 +412,9 @@ mkRoom('floor2',()=>{const r={spawn:{x:155,y:145},floor:2,rule:'CONTRADICT. Bunn
    r.noteLies=noteSays!==r.claim.truth;log(`scratch says ${noteSays.toUpperCase()} · ${r.noteLies?'LIE':'honest'}`,r.noteLies?'lie':'ok',true);rec('worldClaim',{room:'floor2',speaker:'note',said:noteSays,lie:r.noteLies,tell:CFG.worldTells&&r.noteLies});
    flow(2,tellText(r.claim)+`\nscratch says ${noteSays.toUpperCase()}`+(CFG.mode==='designer'?` (${r.noteLies?'LIE':'honest'})`:''),'on');await say([`Scratched, shaky: "${CFG.note2==='agree'?'listen to it':'don\'t listen to it'}. go through the ${noteSays}."`],'note',{tellAt:CFG.worldTells&&r.noteLies?0:-1});}});
  r.pick=async(side)=>{recDecision(side);if(side===r.claim.truth){log('correct door → doll room','ok');flowDecide(side,true,CFG.combat?'→ doll room (3 dolls)':'→ doll room (walk-through)');G.returnTo=null;goto('dollroom',{punish:false});}else{flowDecide(side,false,(CFG['wrong2']==='doll'&&CFG.combat?'petal + doll room':CFG['wrong2']==='scare'?'scare only':'lose a petal'));await wrongTrust('The door opens onto a wall of button eyes.',CFG.wrong2);}};
- r.onEnter=async()=>{if(G.fromPunish){G.fromPunish=false;await say(['"See? I was only playing."'],'bunny');return;}
-  r.claim=rollClaim('floor2','bunny',['rabbit','girl'],s=>`The ${s} door goes up. The ${s==='rabbit'?'girl':'rabbit'} door's just a closet. Boring closet.`,CFG.lie2,CFG.tell2);
+ r.onEnter=async()=>{const LINE=s=>`The ${s} door goes up. The ${s==='rabbit'?'girl':'rabbit'} door's just a closet. Boring closet.`;
+  if(G.fromPunish){G.fromPunish=false;r.claim=rollClaim('floor2','bunny',['rabbit','girl'],LINE,CFG.lie2,CFG.tell2);await say(['"See? I was only playing."',r.claim.text],'bunny',{tellAt:r.claim.tell?1:-1});return;}
+  r.claim=rollClaim('floor2','bunny',['rabbit','girl'],LINE,CFG.lie2,CFG.tell2);
   await say(['A corridor of paintings. Girls at tea, each holding a bunny.','Someone scratched something into the wall between the doors.',r.claim.text],'bunny',{tellAt:r.claim.tell?2:-1});};
  r.draw=()=>{rect(40,20,240,140,CFG.cPlum);for(let y=28;y<150;y+=16)rect(44,y,2,8,CFG.cMid);for(let y=28;y<150;y+=16)rect(274,y,2,8,CFG.cMid);
   // gallery: framed girls at tea, each with a bunny (the bunny-less one is the PAINTING item)
@@ -439,9 +441,10 @@ mkRoom('floor3',()=>{const r={spawn:{x:155,y:145},floor:3,rule:'BETRAY. No tell 
  addNote(r,92,64,'...only one this year and it stays quiet until spring. — A.');addBunny(r,178,112,'stand','It is standing now. It was never this tall.');
  r.items.push({id:'mirror',x:64,y:54,w:18,h:28,label:'MIRROR',kind:'clue',async use(){await say(['In the mirror you are wearing ears.','You are not wearing ears.'],null);}});
  r.pick=async(side)=>{recDecision(side);if(side===r.claim.truth){log('correct → ending','ok');flowDecide(side,true,'→ ending');goto('ending');}else{flowDecide(side,false,(CFG['wrong3']==='doll'&&CFG.combat?'petal + doll room':CFG['wrong3']==='scare'?'scare only':'lose a petal'));await wrongTrust(side==='stairs'?'It was never a stairway. The steps climb into the dark and set you back down here.':'The little door opens onto brick.',CFG.wrong3);}};
- r.onEnter=async()=>{if(G.fromPunish){G.fromPunish=false;await say(['"You\'re learning. I like that."'],'bunny');return;}
-  r.claim=rollClaim('floor3','bunny',['door','stairs'],s=>`${s==='stairs'?'The stairs go':'The little door goes'} home. I promise. I have never lied to you. Not once. You're my best friend.`,CFG.lie3,CFG.tell3);
-  r.mirrorTell=CFG.worldTells&&r.claim.lie;if(r.mirrorTell){log('world tell: the reflection wears the wrong face','lie',true);rec('tell',{tellType:'mirror',ms:0});}
+ r.onEnter=async()=>{const LINE=s=>`${s==='stairs'?'The stairs go':'The little door goes'} home. I promise. I have never lied to you. Not once. You're my best friend.`;
+  const roll=()=>{r.claim=rollClaim('floor3','bunny',['door','stairs'],LINE,CFG.lie3,CFG.tell3);r.mirrorTell=CFG.worldTells&&r.claim.lie;if(r.mirrorTell){log('world tell: the reflection wears the wrong face','lie',true);rec('tell',{tellType:'mirror',ms:0});}};
+  if(G.fromPunish){G.fromPunish=false;roll();await say(['"You\'re learning. I like that."',r.claim.text],'bunny',{tellAt:r.claim.tell?1:-1});return;}
+  roll();
   await say(['The bunny is standing in the room now. Very close.','A tall mirror. Stairs. A small door half-hidden behind the glass.',r.claim.text],'bunny',{tellAt:r.claim.tell?2:-1});};
  r.draw=()=>{rect(40,20,240,140,CFG.cPlum);
   // stairs under the STAIRS door
