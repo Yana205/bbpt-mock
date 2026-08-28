@@ -1,0 +1,54 @@
+{
+  "_meta": {
+    "approvedBy": "Yan",
+    "approvedAt": "2026-08-28",
+    "source": "bbpt-mock web testbed, candidate B (scenario 'fight')",
+    "decisions": {
+      "flow": "tea party → guest room (pillows) → gallery (rabbit/girl doors + wall scratch) → mandatory doll playroom → mirror room (stairs vs small door) → ending",
+      "wrongPick": "costs 1 petal, stay on the floor, same claim (no punishment rooms)",
+      "combat": "only the mandatory doll playroom after floor 2; flee via exit is free",
+      "zeroPetals": "restart current floor, petals refill, claims re-roll",
+      "teaParty": "keep full length, Esc skips",
+      "firstTell": "first tell of a run lingers (firstTellMs) — visual-only teach, no tutorial text"
+    }
+  },
+  "tells": {
+    "tellType": "faceflip",
+    "tellMs": 350,
+    "firstTellMs": 900,
+    "tellDelayMs": 0,
+    "falseTell": 0,
+    "worldTells": true,
+    "repeatTell": true,
+    "tellInWorld": false
+  },
+  "floors": {
+    "teaParty": { "lie": 1.0, "tell": true, "wrong": "none" },
+    "floor1": { "lie": 1.0, "tell": true, "wrong": "petal" },
+    "floor2": { "lie": 0.5, "tell": true, "wrong": "petal", "wallNote": "contradict" },
+    "floor3": { "lie": 1.0, "tell": false, "wrong": "petal", "mirrorTell": true }
+  },
+  "petals": { "petals": 3, "scareMs": 600 },
+  "combat": {
+    "combat": true,
+    "dolls": 3,
+    "punishDolls": 2,
+    "dollSpeed": 28,
+    "dollHp": 1,
+    "atkReach": 14,
+    "atkActive": 120,
+    "atkCd": 380,
+    "knock": 18,
+    "hurtCd": 900,
+    "flee": "free"
+  },
+  "player": { "speed": 60, "reach": 14, "textSpeed": 40 },
+  "palette": {
+    "cInk": "#0e0a14",
+    "cPlum": "#241a3a",
+    "cMid": "#4a3a6b",
+    "cLilac": "#9a86c4",
+    "cPale": "#d9cfee",
+    "cRed": "#c8262e"
+  }
+}

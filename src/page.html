@@ -221,24 +221,25 @@ for(const k in ASSETS){const i=new Image();i.src=ASSETS[k];ART[k]=i;}
 /* ---------- CONFIG ---------- */
 const DEF={mode:'playtest',seed:1,timeScale:1,skipIntro:false,
  tellType:'faceflip',tellMs:350,firstTellMs:900,tellDelayMs:0,falseTell:0,worldTells:true,repeatTell:true,tellInWorld:false,
- lie0:1,tell0:true,wrong0:'none',lie1:1,tell1:true,wrong1:'petal',lie2:0.5,tell2:true,wrong2:'petal',lie3:1,tell3:false,wrong3:'petal',note2:'contradict',scenario:'teach',
+ lie0:1,tell0:true,wrong0:'none',lie1:1,tell1:true,wrong1:'petal',lie2:0.5,tell2:true,wrong2:'petal',lie3:1,tell3:false,wrong3:'petal',note2:'contradict',scenario:'fight',
  labClaims:10,labLie:0.5,labPetals:false,
  petals:3,punishDolls:2,scareMs:600,
- combat:false,dolls:3,dollSpeed:28,dollHp:1,atkReach:14,atkActive:120,atkCd:380,knock:18,hurtCd:900,flee:'free',
+ combat:true,dolls:3,dollSpeed:28,dollHp:1,atkReach:14,atkActive:120,atkCd:380,knock:18,hurtCd:900,flee:'free',
  speed:60,reach:14,textSpeed:40,cInk:'#0e0a14',cPlum:'#241a3a',cMid:'#4a3a6b',cLilac:'#9a86c4',cPale:'#d9cfee',cRed:'#c8262e'};
 let CFG={...DEF};
-try{const s=localStorage.getItem('bb.cfg');if(s){const o=JSON.parse(s);delete o.tellFloor3;delete o.punishCombat;if(o.flee==='petal')delete o.flee;CFG={...DEF,...o};}}catch(e){}
+// storage key bumped to v2 when the flow was approved (2026-08-28) so stale experiment configs don't shadow the new defaults
+try{const s=localStorage.getItem('bb.cfg2');if(s){const o=JSON.parse(s);CFG={...DEF,...o};}}catch(e){}
 // URL params override everything (share links): ?seed=42&tellType=redpixel&mode=playtest&room=lab
 const URLP=new URLSearchParams(location.search);let urlRoom=null;let urlScen=URLP.get('scenario');
 for(const [k,v] of URLP){if(k==='room'){urlRoom=v;continue;}if(!(k in DEF))continue;const d=DEF[k];CFG[k]=typeof d==='boolean'?(v==='1'||v==='true'):typeof d==='number'?parseFloat(v):v;}
 const inputs=[...document.querySelectorAll('[data-cfg]')];
 function syncInputs(){inputs.forEach(i=>{const k=i.dataset.cfg;if(i.type==='checkbox')i.checked=!!CFG[k];else i.value=CFG[k];});applyMode();if(typeof syncScenario==='function')syncScenario();if(typeof ruleLine==='function')ruleLine();}
-function saveCfg(){try{localStorage.setItem('bb.cfg',JSON.stringify(CFG));}catch(e){}}
+function saveCfg(){try{localStorage.setItem('bb.cfg2',JSON.stringify(CFG));}catch(e){}}
 inputs.forEach(i=>i.addEventListener('input',()=>{const k=i.dataset.cfg;CFG[k]=i.type==='checkbox'?i.checked:((i.type==='number'||i.type==='range')?parseFloat(i.value):i.value);saveCfg();if(k==='mode')applyMode();if(/^(lie|tell|wrong|note2|falseTell|tellDelayMs|combat|worldTells)/.test(k)&&CFG.scenario!=='custom'){CFG.scenario='custom';saveCfg();syncScenario();}ruleLine();if(k==='petals'){G.petals=Math.min(G.petals,CFG.petals);hud();}}));
 const app=document.getElementById('app');
 function applyMode(){const d=CFG.mode==='designer';app.classList.toggle('pt',!d);document.getElementById('mPlay').className=d?'':'cur';document.getElementById('mEdit').className=d?'cur edit':'';document.getElementById('hudMode').textContent=d?'DESIGNER':'PLAYTEST';document.getElementById('hudMode').className='pill'+(d?' designer':'');renderLog();}
 addEventListener('keydown',e=>{if(e.code==='Backquote'){app.classList.toggle('norail');e.preventDefault();}});
-document.getElementById('bDefaults').onclick=()=>{CFG={...DEF};syncInputs();try{localStorage.removeItem('bb.cfg')}catch(e){};log('config → factory','sys');};
+document.getElementById('bDefaults').onclick=()=>{CFG={...DEF};syncInputs();try{localStorage.removeItem('bb.cfg2')}catch(e){};log('config → factory (approved flow)','sys');};
 document.getElementById('bCopy').onclick=()=>copyText(JSON.stringify(CFG,null,2),'config copied');
 document.getElementById('bShare').onclick=()=>{const u=new URL(location.href.split('?')[0]);for(const k in CFG)if(CFG[k]!==DEF[k])u.searchParams.set(k,String(CFG[k]));if(G.room)u.searchParams.set('room',G.room.name);copyText(u.toString(),'share link copied');};
 document.getElementById('bExport').onclick=()=>{const j=JSON.stringify(exportSession(),null,2);const b=new Blob([j],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`bunnyboo-session-${CFG.seed}-${CFG.tellType}.json`;a.click();copyText(j,'session exported + copied');};

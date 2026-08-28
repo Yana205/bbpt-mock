@@ -43,6 +43,6 @@ Keep all tests green. Add a test for every behaviour change; the `window.BB` hoo
 - Don't add features to the testbed that the Unity build won't have. It exists to answer the GDD's open questions, not to become the game.
 
 ## Next steps queue
-1. Playtest 3 people with the same seed × 3 tell types (`?room=lab&mode=playtest&seed=42&tellType=…`), collect exports, compare `summary.detectionRate`.
-2. Decide tell type + `tellMs` + floor-2 note behaviour + combat keep/cut → write the numbers back into `gdd/bunny-boo-gdd-v0.md` (project) as v1.
-3. Unity scaffold from `COPY CONFIG` JSON.
+1. ~~Playtest candidates~~ **DONE 2026-08-28**: Yan approved the full flow (candidate B / scenario `fight`). Decisions frozen in `unity/approved-config.json`; DEF now equals the approved game (combat on, wrong→petal, free flee, firstTellMs teach).
+2. Optional: lab runs with other testers (`?room=lab&mode=playtest&seed=42&tellType=…`) to double-check faceflip vs redpixel before art is final.
+3. **Unity scaffold from `unity/approved-config.json`** ← current phase. Write the numbers into `gdd/bunny-boo-gdd-v0.md` (project) as v1 while scaffolding.
