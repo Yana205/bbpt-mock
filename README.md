@@ -37,18 +37,14 @@ Room content now matches the flow doc: floor 1 is the **guest room** (two named 
 - **Combat-off doll room** now shows sleeping dolls labelled ASLEEP (was unlabelled rectangles).
 - **Export bug:** tell events were recorded with `type: "faceflip"` instead of `type: "tell"`. Fixed; old exports undercount tells.
 
-## Scenarios (rail → Scenario → Preset)
-| preset | what it tests |
-|---|---|
-| GDD v0 | teach (100% lie, tell) / contradict (50%, note) / betray (100%, no tell) |
-| Fair | tell on every lie incl. floor 3 — can players read the tell at all? |
-| Coin flip | 50% everywhere — does the tell alone carry the game? |
-| Cried wolf | honest, honest, lie — do players keep watching after trust is earned? |
-| Double bluff | 30% false tells on truths — the tell itself becomes untrustworthy |
-| Late tell | face flips 900 ms after the line — timing readability |
-| Honest bunny, lying world | bunny never lies; the wall note does — is a world tell readable? |
-| Combat on | combat + wrong pick → 2-doll punishment room; floor 2 has 3 dolls |
-| Gentle | scare only, no petals — is a resource needed at all? |
+## The three candidates (rail → Scenario → Preset)
+Trimmed from nine experiments to the three configurations the shipped game could actually be. Pick one from the rail (it restarts the run) or boot it from a URL.
+
+| preset (`?scenario=`) | what it is | the decision it answers |
+|---|---|---|
+| **A — GDD baseline** (`teach`) | F1 always lies (tell) / F2 coin flip vs the wall scratch / F3 always lies, mirror is the only tell. No combat. | Does the designed teach→contradict→betray arc land? |
+| **B — Combat on** (`fight`) | Same arc, plus wrong trust → 2-doll punishment room, mandatory 3-doll playroom on floor 2. | Keep or cut combat by Friday? |
+| **C — Double bluff** (`bluff`) | Coin-flip lies, tells everywhere, 30% false tells on honest lines. | Is "even the tell lies" fun or just unfair? |
 
 Editing any lie/tell/wrong cell switches the preset to *custom*; SHARE LINK carries it. `?scenario=bluff&seed=9` applies a preset from the URL.
 

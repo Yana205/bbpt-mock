@@ -34,8 +34,8 @@ ENTER room
 ## Metrics (in every export)
 `detectionRate = liesCaught / lies` · `falseAlarmRate = falseAlarms / honest` · `avgMsToDecide` · per-claim `followed` (did they trust the speaker) and `correct`.
 
-## Scenario presets (what each answers)
-teach (GDD v0) · fair (tell on F3 too) · coin (50% everywhere) · wolf (honest, honest, lie) · bluff (30% false tells) · late (tell 900 ms late) · world (honest bunny, lying note) · fight (combat + doll punishment) · gentle (scare only)
+## Scenario presets — the three candidates
+`teach` (A — GDD baseline) · `fight` (B — combat on, doll punishment) · `bluff` (C — double bluff, 30% false tells). Picking a preset restarts the run. Anything else is reachable by hand-editing the per-floor grid (→ *custom*).
 
 ## Config keys
 Session: `mode seed timeScale skipIntro` · Tells: `tellType tellMs tellDelayMs falseTell worldTells repeatTell tellInWorld` · Per floor n∈0..3: `lie{n} tell{n} wrong{n}` + `note2` · Lab: `labClaims labLie labPetals` · Petals: `petals punishDolls scareMs` · Combat: `combat dolls dollSpeed dollHp atkReach atkActive atkCd knock hurtCd` · Player: `speed reach textSpeed` · Palette: `cInk cPlum cMid cLilac cPale cRed`.

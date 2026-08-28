@@ -116,7 +116,7 @@ canvas{width:960px;max-width:100%;aspect-ratio:16/9;image-rendering:pixelated;im
 
   <div class="grp">TEST SETUP</div>
   <details open><summary>Scenario &amp; tells</summary>
-    <p class="hint">Pick a preset, then tweak anything — edits switch the preset to <i>custom</i>.</p>
+    <p class="hint">The three candidates: <b>A</b> baseline · <b>B</b> combat · <b>C</b> double bluff. Picking one restarts the run. Tweaks switch the preset to <i>custom</i>.</p>
     <div class="row"><label>Preset</label><select id="scenSel"></select></div>
     <p class="sub" id="scenDesc" style="margin:4px 0 6px"></p>
     <div class="row"><label>Tell type</label><select data-cfg="tellType"><option value="faceflip">face flip</option><option value="redpixel">red pixel eyes</option><option value="textglitch">text glitch</option><option value="candle">candle flicker</option><option value="none">none</option></select></div>
@@ -248,20 +248,14 @@ function copyText(t,msg){(navigator.clipboard?navigator.clipboard.writeText(t):P
 
 /* ---------- SCENARIOS (presets over the per-floor rules) ---------- */
 const SCEN={
- teach:{name:'GDD v0 — teach / contradict / betray',desc:'F1 always lies with a tell. F2 coin flip, wall note contradicts. F3 always lies, NO tell.',set:{lie1:1,tell1:true,lie2:0.5,tell2:true,note2:'contradict',lie3:1,tell3:false,falseTell:0,tellDelayMs:0,combat:false,wrong1:'petal',wrong2:'petal',wrong3:'petal'}},
- fair:{name:'Fair — tell everywhere',desc:'Every lie has a tell, even floor 3. Baseline: can players read the tell at all?',set:{lie1:1,tell1:true,lie2:0.5,tell2:true,lie3:1,tell3:true,falseTell:0,tellDelayMs:0,note2:'contradict'}},
- coin:{name:'Coin flip — 50% every floor',desc:'No fixed lies. Tests whether the tell alone carries the game when nothing else is predictable.',set:{lie1:0.5,tell1:true,lie2:0.5,tell2:true,lie3:0.5,tell3:true,falseTell:0,note2:'contradict'}},
- wolf:{name:'Cried wolf — honest, honest, lie',desc:'Bunny tells the truth on F1 and F2 to earn trust, then lies on F3 with a tell. Do players still look?',set:{lie1:0,tell1:true,lie2:0,tell2:true,lie3:1,tell3:true,falseTell:0,note2:'agree'}},
- bluff:{name:'Double bluff — tells on truths too',desc:'30% of honest lines also flash the face. The tell itself becomes untrustworthy ("Trust No One").',set:{lie1:0.5,tell1:true,lie2:0.5,tell2:true,lie3:0.5,tell3:true,falseTell:0.3,note2:'contradict'}},
- late:{name:'Late tell — face flips 900 ms after the line',desc:'Same rules as GDD, but the tell arrives after the player has probably stopped looking.',set:{lie1:1,tell1:true,lie2:0.5,tell2:true,lie3:1,tell3:false,falseTell:0,tellDelayMs:900,note2:'contradict'}},
- world:{name:'Honest bunny, lying world',desc:'Bunny never lies. The wall note lies (with the tell). Is a world tell as readable as a face?',set:{lie1:0,tell1:true,lie2:0,tell2:true,lie3:0,tell3:true,note2:'contradict',worldTells:true,falseTell:0}},
- fight:{name:'Combat on — wrong trust sends you to the dolls',desc:'Combat module on. Any wrong pick costs a petal AND drops you in a 2-doll punishment room. Floor 2 has the mandatory 3-doll room.',set:{combat:true,wrong1:'doll',wrong2:'doll',wrong3:'doll',lie1:1,tell1:true,lie2:0.5,tell2:true,lie3:1,tell3:false,note2:'contradict'}},
- gentle:{name:'Gentle — scare only, no petals',desc:'Wrong trust just flashes. Tests whether the game needs a resource at all.',set:{wrong1:'scare',wrong2:'scare',wrong3:'scare',lie1:1,tell1:true,lie2:0.5,tell2:true,lie3:1,tell3:false}},
+ teach:{name:'A — GDD baseline',desc:'The game as designed: F1 always lies (tell), F2 coin flip vs the wall scratch, F3 always lies with the MIRROR as the only tell. No combat.',set:{lie1:1,tell1:true,lie2:0.5,tell2:true,note2:'contradict',lie3:1,tell3:false,falseTell:0,tellDelayMs:0,combat:false,wrong1:'petal',wrong2:'petal',wrong3:'petal'}},
+ fight:{name:'B — Combat on',desc:'Same flow as A, but wrong trust also drops you into a 2-doll punishment room, and floor 2 has the mandatory 3-doll playroom. Decides combat keep/cut.',set:{combat:true,wrong1:'doll',wrong2:'doll',wrong3:'doll',lie1:1,tell1:true,lie2:0.5,tell2:true,lie3:1,tell3:false,note2:'contradict'}},
+ bluff:{name:'C — Double bluff',desc:'Coin-flip lies on every floor, tells everywhere — but 30% of honest lines ALSO flash the tell. Even the tell can lie ("Trust No One").',set:{lie1:0.5,tell1:true,lie2:0.5,tell2:true,lie3:0.5,tell3:true,falseTell:0.3,note2:'contradict'}},
 };
 if(urlScen&&SCEN[urlScen]){Object.assign(CFG,SCEN[urlScen].set);for(const [k,v] of URLP){if(k in SCEN[urlScen].set){const d=DEF[k];CFG[k]=typeof d==='boolean'?(v==='1'||v==='true'):typeof d==='number'?parseFloat(v):v;}}}
 const scenSel=document.getElementById('scenSel');for(const k in SCEN){const o=document.createElement('option');o.value=k;o.textContent=SCEN[k].name;scenSel.appendChild(o);}
 const custom=document.createElement('option');custom.value='custom';custom.textContent='custom (edited)';scenSel.appendChild(custom);
-function applyScenario(k){if(!SCEN[k])return;Object.assign(CFG,SCEN[k].set);CFG.scenario=k;saveCfg();syncInputs();log(`scenario → ${SCEN[k].name}`,'sys');rec('scenario',{id:k});}
+function applyScenario(k){if(!SCEN[k])return;Object.assign(CFG,SCEN[k].set);CFG.scenario=k;saveCfg();syncInputs();log(`scenario → ${SCEN[k].name}`,'sys');rec('scenario',{id:k});resetRun();}
 scenSel.onchange=()=>applyScenario(scenSel.value);
 function syncScenario(){scenSel.value=CFG.scenario||'custom';document.getElementById('scenDesc').textContent=SCEN[CFG.scenario]?SCEN[CFG.scenario].desc:'Edited by hand — SHARE LINK still carries every value.';}
 
