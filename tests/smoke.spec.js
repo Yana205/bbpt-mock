@@ -174,6 +174,22 @@ test('three notes assemble the invitation: secret ending fires', async ({ page }
   await page.waitForFunction(() => BB.session.events.some(e => e.type === 'ending' && e.secret === true), null, { timeout: 5000 });
 });
 
+test('doll room: Space swings mid-fight, and the locked exit can be forced for a petal', async ({ page }) => {
+  await page.goto(url + '?room=dollroom&seed=1&combat=1&dollSpeed=0&mode=designer');
+  await waitRoom(page, 'dollroom');
+  await skip(page);
+  expect(await page.evaluate(() => BB.state.dolls.length)).toBe(3);
+  // away from doors/items, Space is an attack, not an examine
+  await page.evaluate(() => { BB.teleport(100, 120); BB.press('Space'); });
+  await page.waitForFunction(() => BB.state.atk.cd > 0);
+  expect(await page.evaluate(() => BB.dialogOpen())).toBe(false);
+  // at the locked exit, Z forces the door: −1 petal, on to floor 3
+  await page.evaluate(() => { BB.teleport(148, 30); BB.press('KeyZ'); });
+  await page.waitForFunction(() => BB.state.petals === 2);
+  await skip(page);
+  await waitRoom(page, 'floor3');
+});
+
 test('top bar: room tabs switch rooms, PLAY/EDIT toggles the rail', async ({ page }) => {
   await page.goto(url + '?seed=1&mode=designer');
   await waitRoom(page, 'teaparty');

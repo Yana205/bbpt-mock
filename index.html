@@ -169,6 +169,7 @@ canvas{width:960px;max-width:100%;aspect-ratio:16/9;image-rendering:pixelated;im
     <div class="row"><label>Attack cooldown ms</label><input type="number" data-cfg="atkCd" step="10"></div>
     <div class="row"><label>Knockback px</label><input type="number" data-cfg="knock"></div>
     <div class="row"><label>Hurt i‑frames ms</label><input type="number" data-cfg="hurtCd" step="50"></div>
+    <div class="row"><label>Flee the doll room</label><select data-cfg="flee"><option value="petal">force door · −1 petal</option><option value="free">force door · free</option><option value="none">must clear dolls</option></select></div>
   </details>
   <details><summary>Player &amp; text</summary>
     <div class="row"><label>Move speed px/s</label><input type="number" data-cfg="speed" step="5"></div>
@@ -211,7 +212,7 @@ canvas{width:960px;max-width:100%;aspect-ratio:16/9;image-rendering:pixelated;im
     <div class="n" id="f4"><div class="k">5 RESULT</div><div class="v">—</div></div>
     <div class="n" id="f5"><div class="k">6 NEXT</div><div class="v">—</div></div>
   </div>
-  <div class="help"><span><kbd>←↑→↓</kbd>/<kbd>WASD</kbd> move</span><span><kbd>Z</kbd>/<kbd>Space</kbd> examine · advance</span><span><kbd>X</kbd> attack</span><span><kbd>Esc</kbd> skip intro</span><span><kbd>`</kbd> admin</span><span>Click the game once to focus.</span></div>
+  <div class="help"><span><kbd>←↑→↓</kbd>/<kbd>WASD</kbd> move</span><span><kbd>Z</kbd>/<kbd>Space</kbd> examine · advance</span><span><kbd>X</kbd>/<kbd>Space</kbd> attack in a fight</span><span><kbd>Esc</kbd> skip intro</span><span><kbd>`</kbd> admin</span><span>Click the game once to focus.</span></div>
 </main>
 </div>
 
@@ -226,7 +227,7 @@ const DEF={mode:'playtest',seed:1,timeScale:1,skipIntro:false,
  lie0:1,tell0:true,wrong0:'none',lie1:1,tell1:true,wrong1:'petal',lie2:0.5,tell2:true,wrong2:'petal',lie3:1,tell3:false,wrong3:'petal',note2:'contradict',scenario:'teach',
  labClaims:10,labLie:0.5,labPetals:false,
  petals:3,punishDolls:2,scareMs:600,
- combat:false,dolls:3,dollSpeed:28,dollHp:1,atkReach:14,atkActive:120,atkCd:380,knock:18,hurtCd:900,
+ combat:false,dolls:3,dollSpeed:28,dollHp:1,atkReach:14,atkActive:120,atkCd:380,knock:18,hurtCd:900,flee:'petal',
  speed:60,reach:14,textSpeed:40,cInk:'#0e0a14',cPlum:'#241a3a',cMid:'#4a3a6b',cLilac:'#9a86c4',cPale:'#d9cfee',cRed:'#c8262e'};
 let CFG={...DEF};
 try{const s=localStorage.getItem('bb.cfg');if(s){const o=JSON.parse(s);delete o.tellFloor3;delete o.punishCombat;CFG={...DEF,...o};}}catch(e){}
@@ -426,9 +427,15 @@ mkRoom('floor2',()=>{const r={spawn:{x:155,y:145},floor:2,rule:'CONTRADICT. Bunn
   if(G.notes.has('floor2')){rect(112,56,14,12,CFG.cMid);rect(113,57,12,10,CFG.cInk);}};return r;});
 
 /* Doll room: with combat off it is the GDD fallback — a "run to the door" room. */
-mkRoom('dollroom',(o)=>{const r={spawn:{x:155,y:145},punish:!!o.punish,rule:CFG.combat?'COMBAT. X attacks in the facing direction. Clear all dolls → exit unlocks. Contact = 1 petal.':'Combat OFF (scenario). Walk to the exit. Turn on combat in the rail or pick the Combat scenario.'};
+mkRoom('dollroom',(o)=>{const r={spawn:{x:155,y:145},punish:!!o.punish,rule:CFG.combat?`COMBAT. X or SPACE swings in the facing direction. Clear all dolls → exit unlocks${CFG.flee!=='none'?', or force the door'+(CFG.flee==='petal'?' (−1 petal)':''):''}. Contact = 1 petal.`:'Combat OFF (scenario). Walk to the exit. Turn on combat in the rail or pick the Combat scenario.'};
  const fight=CFG.combat;
- r.doors=[{id:'exit',x:152,y:20,w:16,h:6,locked:fight,to:r.punish?(G.returnTo||'floor2'):'floor3',label:fight?'EXIT (clear dolls)':'EXIT'}];addBunny(r,108,26,'sit','It watches from the doorway. It does not come in.');
+ r.doors=[{id:'exit',x:152,y:20,w:16,h:6,locked:fight,to:r.punish?(G.returnTo||'floor2'):'floor3',label:fight?(CFG.flee!=='none'?'EXIT (force it)':'EXIT (clear dolls)'):'EXIT'}];addBunny(r,108,26,'sit','It watches from the doorway. It does not come in.');
+ r.doors[0].onLocked=async()=>{if(CFG.flee==='none'||!G.dolls.length){say(['Locked.'],null);return;}
+  if(CFG.flee==='petal'){G.petals--;hud();G.scare=CFG.scareMs/1000;log(`fled the doll room → petal lost (${G.petals} left)`,'lie');rec('petal',{left:G.petals,reason:'flee'});
+   if(G.petals<=0){G.petals=CFG.petals;log('petals 0 → floor restart','lie');rec('restart',{room:'dollroom'});await say(['They catch your sleeve at the door.','...','You wake up again.'],null);goto('dollroom',{punish:r.punish});return;}
+   await say(['You shoulder the door and squeeze through.','Something tears behind you.'],null);}
+  else{log('fled the doll room','sys');rec('flee',{room:'dollroom'});await say(['You run for the door and squeeze through.'],null);}
+  goto(r.doors[0].to);};
  const n=fight?(r.punish?CFG.punishDolls:CFG.dolls):0;for(let i=0;i<n;i++)G.dolls.push({x:60+i*(200/Math.max(1,n-1)),y:40,w:10,h:12,hp:CFG.dollHp,hit:0});
  r.onEnter=async()=>{log(`doll room: ${fight?n+' dolls':'combat off, run to the door'} (${r.punish?'punishment':'mandatory'})`,'sys');await say([fight?(r.punish?'"Play with them for a bit, will you?"':'"Just a little playroom. They only want to hug."'):'"A playroom. They\'re all asleep. Don\'t wake them."'],'bunny');};
  r.update=()=>{if(fight&&!r.cleared&&G.dolls.length===0){r.cleared=true;r.doors[0].locked=false;r.doors[0].label='EXIT';log('dolls cleared → door open','ok');flow(5,'dolls cleared → exit open','good');}};
@@ -473,8 +480,11 @@ function update(dt){if(tellVis){tellTimer-=dt;if(tellTimer<=0){tellVis=false;dra
    if(G.petals<=0){G.petals=CFG.petals;log('petals 0 → floor restart','lie');rec('restart',{room:room.name});say(['The dolls tuck you in.','...','You wake up again.'],null).then(()=>goto(room.name,{punish:room.punish}));return;}}}
  G.dolls=G.dolls.filter(d=>d.hp>0);
  if(room.update)room.update(dt);
- if(actPressed){actPressed=false;let target=room.items.find(i=>!i.got&&near(i));if(target){target.use();return;}
-  const door=room.doors.find(d=>near(d));if(door){if(door.locked){log('door locked','');say(['Locked.'],null);}else if(door.to==='pick')room.pick(door.id);else goto(door.to);}}}
+ if(actPressed){actPressed=false;const door=room.doors.find(d=>near(d));
+  // mid-fight, Z/Space swings too — unless you're at a door (that's the flee)
+  if(CFG.combat&&G.dolls.length>0&&!door){if(G.atk.cd<=0){G.atk.cd=CFG.atkCd/1000;G.atk.t=CFG.atkActive/1000;}return;}
+  let target=room.items.find(i=>!i.got&&near(i));if(target){target.use();return;}
+  if(door){if(door.locked){if(door.onLocked)door.onLocked();else{log('door locked','');say(['Locked.'],null);}}else if(door.to==='pick')room.pick(door.id);else goto(door.to);}}}
 function hitbox(){const p=G.player,r=CFG.atkReach;if(p.dir==='left')return{x:p.x-r,y:p.y,w:r,h:p.h};if(p.dir==='right')return{x:p.x+p.w,y:p.y,w:r,h:p.h};if(p.dir==='up')return{x:p.x,y:p.y-r,w:p.w,h:r};return{x:p.x,y:p.y+p.h,w:p.w,h:r};}
 function overlap(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;}
 
