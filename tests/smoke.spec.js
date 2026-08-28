@@ -38,7 +38,7 @@ test('seed makes claims deterministic', async ({ page }) => {
   expect(a).toBe(b);
 });
 
-test('floor 1: correct chest unlocks door, wrong chest costs a petal', async ({ page }) => {
+test('floor 1: correct pillow unlocks door, wrong pillow costs a petal', async ({ page }) => {
   await page.goto(url + '?seed=3&skipIntro=1&lie1=1&wrong1=petal');
   await waitRoom(page, 'floor1');
   await skip(page);
@@ -133,6 +133,45 @@ test('examining the bunny repeats the claim and re-fires the tell', async ({ pag
   await page.evaluate(() => BB.press('KeyZ')); await page.waitForTimeout(100);   // finish line 1
   await page.evaluate(() => BB.press('KeyZ')); await page.waitForTimeout(400);   // advance to the claim line → tell
   await page.waitForFunction(n => BB.session.events.filter(e => e.type === 'tell').length > n, before, { timeout: 5000 });
+});
+
+test('floor 2 gallery: rabbit/girl doors, wall scratch contradicts the bunny', async ({ page }) => {
+  await page.goto(url + '?seed=4&room=floor2&mode=designer&note2=contradict');
+  await waitRoom(page, 'floor2');
+  await skip(page);
+  const c = await page.evaluate(() => BB.roomClaim());
+  expect(['rabbit', 'girl']).toContain(c.said);
+  expect(['rabbit', 'girl']).toContain(c.truth);
+  await useAt(page, 150, 72); // the wall scratch
+  await page.waitForFunction(() => BB.session.events.some(e => e.type === 'worldClaim'));
+  const ev = await page.evaluate(() => BB.session.events.find(e => e.type === 'worldClaim'));
+  expect(ev.said).not.toBe(c.said); // contradict mode: scratch never agrees with Boo
+});
+
+test('floor 3: the mirror carries the tell, wrong pick throws you back into the room', async ({ page }) => {
+  await page.goto(url + '?seed=2&room=floor3&mode=designer&lie3=1&tell3=0&wrong3=petal');
+  await waitRoom(page, 'floor3');
+  await skip(page);
+  // no face tell, but the world tell fired: the reflection wears the wrong face
+  expect(await page.evaluate(() => BB.state.room.mirrorTell)).toBe(true);
+  expect(await page.evaluate(() => BB.session.events.some(e => e.type === 'tell' && e.tellType === 'mirror'))).toBe(true);
+  const truth = await page.evaluate(() => BB.roomClaim().truth);
+  const pos = { door: [62, 30], stairs: [244, 30] };
+  await useAt(page, ...pos[truth === 'door' ? 'stairs' : 'door']);
+  await page.waitForFunction(() => BB.state.petals === 2);
+  await skip(page);
+  expect(await page.evaluate(() => BB.state.room.name)).toBe('floor3');
+});
+
+test('three notes assemble the invitation: secret ending fires', async ({ page }) => {
+  await page.goto(url + '?seed=6&room=floor3&mode=designer&lie3=0&tell3=0');
+  await waitRoom(page, 'floor3');
+  await skip(page);
+  await page.evaluate(() => { ['floor1', 'floor2', 'floor3'].forEach(n => BB.state.notes.add(n)); });
+  const truth = await page.evaluate(() => BB.roomClaim().truth); // honest roll: said === truth
+  const pos = { door: [62, 30], stairs: [244, 30] };
+  await useAt(page, ...pos[truth]);
+  await page.waitForFunction(() => BB.session.events.some(e => e.type === 'ending' && e.secret === true), null, { timeout: 5000 });
 });
 
 test('top bar: room tabs switch rooms, PLAY/EDIT toggles the rail', async ({ page }) => {

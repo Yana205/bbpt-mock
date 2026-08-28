@@ -123,11 +123,11 @@ canvas{width:960px;max-width:100%;aspect-ratio:16/9;image-rendering:pixelated;im
     <div class="floorgrid">
       <div class="h">FLOOR</div><div class="h">LIE %</div><div class="h">TELL</div><div class="h">WRONG →</div>
       <div>tea</div><input type="number" data-cfg="lie0" step="0.1" min="0" max="1"><input type="checkbox" data-cfg="tell0"><select data-cfg="wrong0"><option value="none">nothing</option><option value="scare">scare</option><option value="petal">petal</option></select>
-      <div>1 chest</div><input type="number" data-cfg="lie1" step="0.1" min="0" max="1"><input type="checkbox" data-cfg="tell1"><select data-cfg="wrong1"><option value="scare">scare</option><option value="petal">petal</option><option value="doll">petal+dolls</option></select>
-      <div>2 doors</div><input type="number" data-cfg="lie2" step="0.1" min="0" max="1"><input type="checkbox" data-cfg="tell2"><select data-cfg="wrong2"><option value="scare">scare</option><option value="petal">petal</option><option value="doll">petal+dolls</option></select>
-      <div>3 doors</div><input type="number" data-cfg="lie3" step="0.1" min="0" max="1"><input type="checkbox" data-cfg="tell3"><select data-cfg="wrong3"><option value="scare">scare</option><option value="petal">petal</option><option value="doll">petal+dolls</option></select>
+      <div>1 pillow</div><input type="number" data-cfg="lie1" step="0.1" min="0" max="1"><input type="checkbox" data-cfg="tell1"><select data-cfg="wrong1"><option value="scare">scare</option><option value="petal">petal</option><option value="doll">petal+dolls</option></select>
+      <div>2 gallery</div><input type="number" data-cfg="lie2" step="0.1" min="0" max="1"><input type="checkbox" data-cfg="tell2"><select data-cfg="wrong2"><option value="scare">scare</option><option value="petal">petal</option><option value="doll">petal+dolls</option></select>
+      <div>3 mirror</div><input type="number" data-cfg="lie3" step="0.1" min="0" max="1"><input type="checkbox" data-cfg="tell3"><select data-cfg="wrong3"><option value="scare">scare</option><option value="petal">petal</option><option value="doll">petal+dolls</option></select>
     </div>
-    <div class="row"><label>Floor 2 wall note</label><select data-cfg="note2"><option value="contradict">contradicts bunny</option><option value="agree">agrees with bunny</option><option value="truth">always truth</option><option value="off">no note</option></select></div>
+    <div class="row"><label>Floor 2 wall scratch</label><select data-cfg="note2"><option value="contradict">contradicts bunny</option><option value="agree">agrees with bunny</option><option value="truth">always truth</option><option value="off">no scratch</option></select></div>
   </details>
   <details open><summary>Tell lab</summary>
     <p class="hint">Settings for the ⚗ TELL LAB run: rapid claims, then detection rate / false alarms / ms-to-decide.</p>
@@ -359,7 +359,7 @@ async function wrongTrust(msg,cons){cons=cons||'petal';G.scare=CFG.scareMs/1000;
  if(cons==='doll'&&CFG.combat){G.returnTo=G.room.name;G.fromPunish=true;goto('dollroom',{punish:true});return true;}
  return false;}
 function near(item){const p=G.player;const cx=p.x+p.w/2,cy=p.y+p.h/2;const ix=item.x+item.w/2,iy=item.y+item.h/2;return Math.hypot(cx-ix,cy-iy)<CFG.reach+Math.max(item.w,item.h)/2;}
-function addNote(room,x,y){(room.items=room.items||[]).push({id:'note',x,y,w:6,h:8,label:'TORN NOTE',kind:'collect',got:G.notes.has(room.name),async use(){if(G.notes.has(room.name))return;G.notes.add(room.name);this.got=true;hud();log('note collected','ok');rec('note',{room:room.name,total:G.notes.size});await say(['A torn piece of the invitation.','"...we only need one more girl for the show..."'],null);}});}
+function addNote(room,x,y,frag,label){(room.items=room.items||[]).push({id:'note',x,y,w:6,h:8,label:label||'TORN NOTE',kind:'collect',got:G.notes.has(room.name),async use(){if(G.notes.has(room.name))return;G.notes.add(room.name);this.got=true;hud();log('note collected','ok');rec('note',{room:room.name,total:G.notes.size});await say(['A torn piece of an invitation.',`"${frag||'...we only need one more girl for the show...'}"`],null);}});}
 
 function addBunny(room,x,y,pose,where){(room.items=room.items||[]).push({id:'bunnyNpc',x,y,w:14,h:pose==='stand'?22:14,label:'BUNNY',kind:'bunny',pose,async use(){
   const c=room.claim;if(!c){await say([where||'It sits very still. Its button eyes catch the light.'],'bunny');return;}
@@ -391,28 +391,38 @@ mkRoom('teaparty',()=>{const r={spawn:{x:168,y:118},skippable:true,floor:0,rule:
  r.onEnter=async()=>{await say(['New town. New school. A "welcome" tea party.','You are not sure why the popular girls invited you.','(Esc skips the intro.)'],null);};
  r.draw=()=>{if(ART.tearoom.naturalWidth)ctx.drawImage(ART.tearoom,0,0,W,H);else{rect(40,20,240,140,CFG.cPlum);rect(120,84,80,26,CFG.cMid);rect(122,86,76,22,CFG.cLilac);}};return r;});
 
-mkRoom('floor1',()=>{ const r={spawn:{x:155,y:140},floor:1,rule:'TEACH THE BITE. Bunny claims which chest holds the key. Right chest → key → exit unlocks'};r.items=[
- {id:'left',x:70,y:70,w:16,h:12,label:'CHEST L',kind:'pick',use:()=>openChest('left')},{id:'right',x:234,y:70,w:16,h:12,label:'CHEST R',kind:'pick',use:()=>openChest('right')}];
- r.doors=[{id:'exit',x:152,y:20,w:16,h:6,locked:true,to:'floor2',label:'EXIT (locked)'}];addNote(r,262,144);r.candle={x:196,y:30};addBunny(r,108,26,'sit','It sits in the doorway. Waiting for you, apparently.');
- async function openChest(side){if(r.opened)return;if(!r.claim){await say(['It is locked tight. The bunny hasn\'t said anything yet.'],null);return;}
+mkRoom('floor1',()=>{ const r={spawn:{x:155,y:140},floor:1,rule:'TEACH THE BITE. Bunny claims which pillow hides the key. Right pillow → key → exit unlocks'};r.items=[
+ {id:'left',x:70,y:74,w:16,h:8,label:'PILLOW L',kind:'pick',pillow:true,use:()=>lift('left')},{id:'right',x:234,y:74,w:16,h:8,label:'PILLOW R',kind:'pick',pillow:true,use:()=>lift('right')}];
+ r.doors=[{id:'exit',x:152,y:20,w:16,h:6,locked:true,to:'floor2',label:'EXIT (locked)'}];addNote(r,262,144,'...welcome tea for the new girl, Saturday...');r.candle={x:196,y:30};addBunny(r,108,26,'sit','It sits in the doorway. Waiting for you, apparently.');
+ async function lift(side){if(r.opened)return;if(!r.claim){await say(['A small bed. A name is stitched into the blanket. Not yours. Yet.'],null);return;}
   recDecision(side);
-  if(side===r.claim.truth){r.opened=true;r.doors[0].locked=false;r.doors[0].label='EXIT';G.key=true;const ch=r.items.find(i=>i.id===side);ch.label='CHEST '+(side==='left'?'L':'R')+' (open)';ch.open=true;hud();log('correct chest → key','ok');flowDecide(side,true,'key → exit unlocked');await say(['A small brass key. The door upstairs clicks.'],null);}
-  else{flowDecide(side,false,(CFG['wrong1']==='doll'&&CFG.combat?'petal + doll room':CFG['wrong1']==='scare'?'scare only':'lose a petal'));await wrongTrust('The chest is full of hair.',CFG.wrong1);}}
- r.onEnter=async()=>{if(G.fromPunish){G.fromPunish=false;await say(['"Oops. Try the other one, then."'],'bunny');r.claim=r.claim||rollClaim('floor1','bunny',['left','right'],s=>`The key is in the ${s} chest.`,CFG.lie1,CFG.tell1);return;}
-  r.claim=rollClaim('floor1','bunny',['left','right'],s=>`The key is in the ${s} chest.`,CFG.lie1,CFG.tell1);
-  await say(['You wake up on cold stone. A voice, soft and round.','"Oh! You\'re awake. Don\'t worry — I\'ll get you out."',r.claim.text],'bunny',{tellAt:r.claim.tell?2:-1});};
- r.draw=()=>{rect(40,20,240,140,CFG.cPlum);for(let x=44;x<276;x+=16)rect(x,156,8,2,CFG.cMid);};return r;});
+  if(side===r.claim.truth){r.opened=true;r.doors[0].locked=false;r.doors[0].label='EXIT';G.key=true;const ch=r.items.find(i=>i.id===side);ch.label='PILLOW '+(side==='left'?'L':'R')+' (key)';ch.open=true;hud();log('correct pillow → key','ok');flowDecide(side,true,'key → exit unlocked');await say(['A small brass key. The door upstairs clicks.'],null);await say(['"See? Told you."'],'bunny');}
+  else{flowDecide(side,false,(CFG['wrong1']==='doll'&&CFG.combat?'petal + doll room':CFG['wrong1']==='scare'?'scare only':'lose a petal'));await wrongTrust('Under the pillow: a clump of hair and a torn ribbon.',CFG.wrong1);}}
+ r.onEnter=async()=>{if(G.fromPunish){G.fromPunish=false;await say(['"Oops. Try the other one, then."'],'bunny');r.claim=r.claim||rollClaim('floor1','bunny',['left','right'],s=>`The key's under the ${s.toUpperCase()} pillow. I saw it, go look!`,CFG.lie1,CFG.tell1);return;}
+  r.claim=rollClaim('floor1','bunny',['left','right'],s=>`The key's under the ${s.toUpperCase()} pillow. I saw it, go look!`,CFG.lie1,CFG.tell1);
+  await say(['You wake on cold stone. Two small beds, names stitched into the blankets.','"Hi! Hi hi. You\'re the new one. Don\'t be scared — I\'ll get you out."',r.claim.text],'bunny',{tellAt:r.claim.tell?2:-1});};
+ r.draw=()=>{rect(40,20,240,140,CFG.cPlum);for(let x=44;x<276;x+=16)rect(x,156,8,2,CFG.cMid);
+  // two guest beds; the pillows (pick items) sit at their heads
+  for(const [bx,name] of [[62,'EMMA'],[226,'ROSE']]){rect(bx,72,32,30,CFG.cMid);rect(bx+2,84,28,16,CFG.cLilac);label(name,bx+16,110,false);}};return r;});
 
-mkRoom('floor2',()=>{const r={spawn:{x:155,y:145},floor:2,rule:'CONTRADICT. Bunny names a door; the wall NOTE names one too. Whoever lies carries the tell. Right door → doll room'};
- r.doors=[{id:'left',x:60,y:20,w:16,h:6,locked:false,to:'pick',label:'DOOR L'},{id:'right',x:244,y:20,w:16,h:6,locked:false,to:'pick',label:'DOOR R'}];r.candle={x:160,y:30};addNote(r,48,144);addBunny(r,206,56,'sit','It is sitting under the scratched wall, looking at the note. Or at you.');
- if(CFG.note2!=='off')r.items.push({id:'wallnote',x:150,y:60,w:12,h:10,label:'WALL NOTE',kind:'clue',async use(){if(!r.claim)return;const noteSays=CFG.note2==='truth'?r.claim.truth:CFG.note2==='agree'?r.claim.said:['left','right'].find(o=>o!==r.claim.said);
-   r.noteLies=noteSays!==r.claim.truth;log(`note says ${noteSays.toUpperCase()} · ${r.noteLies?'LIE':'honest'}`,r.noteLies?'lie':'ok',true);rec('worldClaim',{room:'floor2',speaker:'note',said:noteSays,lie:r.noteLies,tell:CFG.worldTells&&r.noteLies});
-   flow(2,tellText(r.claim)+`\nnote says ${noteSays.toUpperCase()}`+(CFG.mode==='designer'?` (${r.noteLies?'LIE':'honest'})`:''),'on');await say([`Shaky handwriting: "${CFG.note2==='agree'?'listen to the bunny':'the bunny lies'}. take the ${noteSays} door."`],'note',{tellAt:CFG.worldTells&&r.noteLies?0:-1});}});
+mkRoom('floor2',()=>{const r={spawn:{x:155,y:145},floor:2,rule:'CONTRADICT. Bunny names a door; the wall SCRATCH names one too. Whoever lies carries the tell. Right door → doll room'};
+ r.doors=[{id:'rabbit',x:60,y:20,w:16,h:6,locked:false,to:'pick',label:'RABBIT DOOR'},{id:'girl',x:244,y:20,w:16,h:6,locked:false,to:'pick',label:'GIRL DOOR'}];r.candle={x:160,y:30};addBunny(r,206,56,'sit','It is sitting under the scratched wall, looking at the writing. Or at you.');
+ // note 2 hides behind the one painting whose girl has no bunny
+ r.items.push({id:'note',x:112,y:56,w:12,h:10,label:'PAINTING',kind:'collect',paint:true,got:G.notes.has('floor2'),async use(){if(this.got)return;
+  await say(['A girl at tea. Something is wrong with this one.','She is the only girl without a bunny.'],null);
+  G.notes.add('floor2');this.got=true;hud();log('note collected','ok');rec('note',{room:'floor2',total:G.notes.size});
+  await say(['Behind the frame, a torn scrap.','"...she won\'t be missed, her mother works nights..."'],null);}});
+ if(CFG.note2!=='off')r.items.push({id:'wallnote',x:150,y:60,w:12,h:10,label:'WALL SCRATCH',kind:'clue',async use(){if(!r.claim)return;const noteSays=CFG.note2==='truth'?r.claim.truth:CFG.note2==='agree'?r.claim.said:['rabbit','girl'].find(o=>o!==r.claim.said);
+   r.noteLies=noteSays!==r.claim.truth;log(`scratch says ${noteSays.toUpperCase()} · ${r.noteLies?'LIE':'honest'}`,r.noteLies?'lie':'ok',true);rec('worldClaim',{room:'floor2',speaker:'note',said:noteSays,lie:r.noteLies,tell:CFG.worldTells&&r.noteLies});
+   flow(2,tellText(r.claim)+`\nscratch says ${noteSays.toUpperCase()}`+(CFG.mode==='designer'?` (${r.noteLies?'LIE':'honest'})`:''),'on');await say([`Scratched, shaky: "${CFG.note2==='agree'?'listen to it':'don\'t listen to it'}. go through the ${noteSays}."`],'note',{tellAt:CFG.worldTells&&r.noteLies?0:-1});}});
  r.pick=async(side)=>{recDecision(side);if(side===r.claim.truth){log('correct door → doll room','ok');flowDecide(side,true,CFG.combat?'→ doll room (3 dolls)':'→ doll room (walk-through)');G.returnTo=null;goto('dollroom',{punish:false});}else{flowDecide(side,false,(CFG['wrong2']==='doll'&&CFG.combat?'petal + doll room':CFG['wrong2']==='scare'?'scare only':'lose a petal'));await wrongTrust('The door opens onto a wall of button eyes.',CFG.wrong2);}};
  r.onEnter=async()=>{if(G.fromPunish){G.fromPunish=false;await say(['"See? I was only playing."'],'bunny');return;}
-  r.claim=rollClaim('floor2','bunny',['left','right'],s=>`Take the ${s} door. The other one is... not for you.`,CFG.lie2,CFG.tell2);
-  await say(['Two doors. Someone scratched something on the wall.',r.claim.text],'bunny',{tellAt:r.claim.tell?1:-1});};
- r.draw=()=>{rect(40,20,240,140,CFG.cPlum);for(let y=28;y<150;y+=16)rect(44,y,2,8,CFG.cMid);for(let y=28;y<150;y+=16)rect(274,y,2,8,CFG.cMid);};return r;});
+  r.claim=rollClaim('floor2','bunny',['rabbit','girl'],s=>`The ${s} door goes up. The ${s==='rabbit'?'girl':'rabbit'} door's just a closet. Boring closet.`,CFG.lie2,CFG.tell2);
+  await say(['A corridor of paintings. Girls at tea, each holding a bunny.','Someone scratched something into the wall between the doors.',r.claim.text],'bunny',{tellAt:r.claim.tell?2:-1});};
+ r.draw=()=>{rect(40,20,240,140,CFG.cPlum);for(let y=28;y<150;y+=16)rect(44,y,2,8,CFG.cMid);for(let y=28;y<150;y+=16)rect(274,y,2,8,CFG.cMid);
+  // gallery: framed girls at tea, each with a bunny (the bunny-less one is the PAINTING item)
+  for(const px of [84,180,214]){rect(px,54,14,12,CFG.cMid);rect(px+1,55,12,10,CFG.cInk);rect(px+3,58,3,5,CFG.cPale);rect(px+8,59,2,3,CFG.cPale);rect(px+8,57,1,2,CFG.cPale);}
+  if(G.notes.has('floor2')){rect(112,56,14,12,CFG.cMid);rect(113,57,12,10,CFG.cInk);}};return r;});
 
 /* Doll room: with combat off it is the GDD fallback — a "run to the door" room. */
 mkRoom('dollroom',(o)=>{const r={spawn:{x:155,y:145},punish:!!o.punish,rule:CFG.combat?'COMBAT. X attacks in the facing direction. Clear all dolls → exit unlocks. Contact = 1 petal.':'Combat OFF (scenario). Walk to the exit. Turn on combat in the rail or pick the Combat scenario.'};
@@ -423,16 +433,21 @@ mkRoom('dollroom',(o)=>{const r={spawn:{x:155,y:145},punish:!!o.punish,rule:CFG.
  r.update=()=>{if(fight&&!r.cleared&&G.dolls.length===0){r.cleared=true;r.doors[0].locked=false;r.doors[0].label='EXIT';log('dolls cleared → door open','ok');flow(5,'dolls cleared → exit open','good');}};
  r.draw=()=>{rect(40,20,240,140,CFG.cPlum);for(let x=48;x<270;x+=24)for(let y=28;y<150;y+=24)rect(x,y,2,2,CFG.cMid);if(!fight){for(const x of [70,196,246]){if(ART.doll.naturalWidth){ctx.globalAlpha=0.55;ctx.drawImage(ART.doll,x-1,44-10,12,22);ctx.globalAlpha=1;}else rect(x,44,10,12,CFG.cMid);label('ASLEEP',x+5,66,false);}}};return r;});
 
-mkRoom('floor3',()=>{const r={spawn:{x:155,y:145},floor:3,rule:'BETRAY. Bunny stands in the room and swears it never lied. Right door → ending'};r.doors=[{id:'left',x:60,y:20,w:16,h:6,locked:false,to:'pick',label:'DOOR L'},{id:'right',x:244,y:20,w:16,h:6,locked:false,to:'pick',label:'DOOR R'}];addNote(r,258,36);addBunny(r,178,112,'stand','It is standing now. It was never this tall.');
- r.items.push({id:'mirror',x:150,y:56,w:14,h:18,label:'MIRROR',kind:'clue',async use(){await say(['In the mirror you are wearing ears.','You are not wearing ears.'],null);}});
- r.pick=async(side)=>{recDecision(side);if(side===r.claim.truth){log('correct door → ending','ok');flowDecide(side,true,'→ ending');goto('ending');}else{flowDecide(side,false,(CFG['wrong3']==='doll'&&CFG.combat?'petal + doll room':CFG['wrong3']==='scare'?'scare only':'lose a petal'));await wrongTrust('It was never a door.',CFG.wrong3);}};
+mkRoom('floor3',()=>{const r={spawn:{x:155,y:145},floor:3,rule:'BETRAY. No tell on the face — the MIRROR wears the wrong one. Small door behind the mirror → out'};
+ r.doors=[{id:'door',x:60,y:20,w:12,h:6,locked:false,to:'pick',label:'SMALL DOOR'},{id:'stairs',x:238,y:20,w:22,h:6,locked:false,to:'pick',label:'STAIRS'}];
+ addNote(r,92,64,'...only one this year and it stays quiet until spring. — A.');addBunny(r,178,112,'stand','It is standing now. It was never this tall.');
+ r.items.push({id:'mirror',x:64,y:54,w:18,h:28,label:'MIRROR',kind:'clue',async use(){await say(['In the mirror you are wearing ears.','You are not wearing ears.'],null);}});
+ r.pick=async(side)=>{recDecision(side);if(side===r.claim.truth){log('correct → ending','ok');flowDecide(side,true,'→ ending');goto('ending');}else{flowDecide(side,false,(CFG['wrong3']==='doll'&&CFG.combat?'petal + doll room':CFG['wrong3']==='scare'?'scare only':'lose a petal'));await wrongTrust(side==='stairs'?'It was never a stairway. The steps climb into the dark and set you back down here.':'The little door opens onto brick.',CFG.wrong3);}};
  r.onEnter=async()=>{if(G.fromPunish){G.fromPunish=false;await say(['"You\'re learning. I like that."'],'bunny');return;}
-  r.claim=rollClaim('floor3','bunny',['left','right'],s=>`The ${s} door goes home. I promise. I have never lied to you.`,CFG.lie3,CFG.tell3);
-  await say(['The bunny is standing in the room now. Very close.',r.claim.text],'bunny',{tellAt:r.claim.tell?1:-1});};
- r.draw=()=>{rect(40,20,240,140,CFG.cPlum);rect(120,30,80,100,CFG.cInk);};return r;});
+  r.claim=rollClaim('floor3','bunny',['door','stairs'],s=>`${s==='stairs'?'The stairs go':'The little door goes'} home. I promise. I have never lied to you. Not once. You're my best friend.`,CFG.lie3,CFG.tell3);
+  r.mirrorTell=CFG.worldTells&&r.claim.lie;if(r.mirrorTell){log('world tell: the reflection wears the wrong face','lie',true);rec('tell',{tellType:'mirror',ms:0});}
+  await say(['The bunny is standing in the room now. Very close.','A tall mirror. Stairs. A small door half-hidden behind the glass.',r.claim.text],'bunny',{tellAt:r.claim.tell?2:-1});};
+ r.draw=()=>{rect(40,20,240,140,CFG.cPlum);
+  // stairs under the STAIRS door
+  for(let i=0;i<4;i++)rect(238-i*4,28+i*5,22+i*8,4,CFG.cMid);};return r;});
 
 mkRoom('ending',()=>{const r={spawn:{x:155,y:140},rule:'ENDING. 3 torn notes → secret ending, else normal. Then run resets.'};r.onEnter=async()=>{const secret=G.notes.size>=3;const s=summary();log(`ENDING: ${secret?'SECRET':'NORMAL'} (notes ${G.notes.size}/3) · ${s.correct}/${s.claims} claims right`,'sys');rec('ending',{secret,notes:G.notes.size,...s});
- await say(secret?['You piece the invitation together.','"Welcome party for the new girl. Bring her to the show."','The girls were never your friends. The bunny was never a doll.','— SECRET ENDING —']:['You climb out into daylight.','Behind you, something soft says "come back soon."','— ENDING —'],null);resetRun();};
+ await say(secret?['The three scraps slide together into one invitation.','"...welcome tea for the new girl, Saturday...','...she won\'t be missed, her mother works nights...','...only one this year and it stays quiet until spring. — A."','School, the next day. Vivi and Mara at their table.','One empty chair.','A click.','— SECRET ENDING —']:['Grey morning. The theater\'s back alley.','Behind you, soft and small:','"...come back soon?"','— ENDING —'],null);resetRun();};
  r.draw=()=>{rect(0,0,320,180,CFG.cPale);rect(140,40,40,100,CFG.cLilac);rect(150,20,20,20,CFG.cPale);ctx.font='8px monospace';ctx.fillStyle=CFG.cInk;ctx.textAlign='center';ctx.fillText('DAYLIGHT',160,160);ctx.textAlign='left';};return r;});
 
 /* ---------- UPDATE ---------- */
@@ -465,13 +480,22 @@ function overlap(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
 /* ---------- DRAW ---------- */
 function label(t,cx,y,hot){ctx.font='7px monospace';ctx.textAlign='center';ctx.fillStyle=hot?CFG.cPale:CFG.cLilac;ctx.fillText(t,Math.round(cx),Math.round(y));ctx.textAlign='left';}
 function drawItem(it){const k=it.kind||'npc';
- if(k==='pick'){if(it.id.startsWith('left')||it.id.startsWith('right')){if(it.h>=10){rect(it.x,it.y,it.w,it.h,CFG.cMid);if(it.open){rect(it.x,it.y-4,it.w,3,CFG.cLilac);rect(it.x+2,it.y+2,it.w-4,it.h-4,CFG.cInk);}else{rect(it.x,it.y,it.w,4,CFG.cLilac);rect(it.x+it.w/2-1,it.y+5,2,3,CFG.cPale);}}else{rect(it.x,it.y,it.w,it.h,CFG.cPale);rect(it.x+1,it.y+1,it.w-2,it.h-2,CFG.cLilac);}}}
+ if(k==='pick'){if(it.pillow){if(it.open){rect(it.x-3,it.y-4,it.w,it.h,CFG.cPale);rect(it.x+4,it.y+3,6,2,CFG.cPale);rect(it.x+9,it.y+2,2,4,CFG.cPale);}else{rect(it.x,it.y,it.w,it.h,CFG.cPale);rect(it.x+2,it.y+2,it.w-4,1,CFG.cLilac);}}
+  else if(it.id.startsWith('left')||it.id.startsWith('right')){if(it.h>=10){rect(it.x,it.y,it.w,it.h,CFG.cMid);if(it.open){rect(it.x,it.y-4,it.w,3,CFG.cLilac);rect(it.x+2,it.y+2,it.w-4,it.h-4,CFG.cInk);}else{rect(it.x,it.y,it.w,4,CFG.cLilac);rect(it.x+it.w/2-1,it.y+5,2,3,CFG.cPale);}}else{rect(it.x,it.y,it.w,it.h,CFG.cPale);rect(it.x+1,it.y+1,it.w-2,it.h-2,CFG.cLilac);}}}
  else if(k==='bunny'){const flip=CFG.tellInWorld&&tellVis&&(CFG.tellType==='faceflip'||CFG.tellType==='redpixel');const img=flip?ART.bunnyBad:ART.bunnyOk;
   if(it.pose==='stand'){rect(it.x+3,it.y+12,8,10,CFG.cLilac);rect(it.x+4,it.y+20,2,2,CFG.cInk);rect(it.x+8,it.y+20,2,2,CFG.cInk);}else{rect(it.x+1,it.y+10,12,5,CFG.cLilac);}
   if(img.naturalWidth)ctx.drawImage(img,it.x-1,it.y-3,16,16);else{rect(it.x+2,it.y,10,10,CFG.cPale);rect(it.x+3,it.y-6,3,6,CFG.cPale);rect(it.x+8,it.y-6,3,6,CFG.cPale);}
   if(flip&&CFG.tellType==='redpixel'){rect(it.x+4,it.y+4,1,1,CFG.cRed);rect(it.x+9,it.y+4,1,1,CFG.cRed);}}
- else if(k==='clue'){if(it.id==='mirror'){rect(it.x-1,it.y-1,it.w+2,it.h+2,CFG.cLilac);rect(it.x,it.y,it.w,it.h,CFG.cInk);rect(it.x+3,it.y+3,3,8,CFG.cMid);}else{rect(it.x,it.y,it.w,it.h,CFG.cPale);for(let i=2;i<it.h-2;i+=3)rect(it.x+2,it.y+i,it.w-4,1,CFG.cMid);}}
- else if(k==='collect'){rect(it.x,it.y,it.w,it.h,CFG.cPale);rect(it.x+1,it.y+2,it.w-2,1,CFG.cRed);rect(it.x+1,it.y+5,it.w-2,1,CFG.cRed);}
+ else if(k==='clue'){if(it.id==='mirror'){rect(it.x-1,it.y-1,it.w+2,it.h+2,CFG.cLilac);rect(it.x,it.y,it.w,it.h,CFG.cInk);
+   // your reflection wears ears
+   rect(it.x+4,it.y+14,5,11,CFG.cPale);rect(it.x+4,it.y+10,1,4,CFG.cPale);rect(it.x+7,it.y+10,1,4,CFG.cPale);
+   // the reflected Boo — while the claim line is on screen and it lies, the mirror wears the wrong face
+   const wrongFace=G.room&&G.room.mirrorTell&&D;rect(it.x+11,it.y+11,5,9,CFG.cLilac);rect(it.x+11,it.y+6,1,5,CFG.cLilac);rect(it.x+14,it.y+6,1,5,CFG.cLilac);
+   if(wrongFace){rect(it.x+12,it.y+13,1,1,CFG.cRed);rect(it.x+14,it.y+13,1,1,CFG.cRed);rect(it.x+11,it.y+16,5,1,CFG.cInk);rect(it.x+12,it.y+17,1,1,CFG.cInk);rect(it.x+14,it.y+17,1,1,CFG.cInk);}
+   else{rect(it.x+12,it.y+13,1,1,CFG.cInk);rect(it.x+14,it.y+13,1,1,CFG.cInk);}}
+  else{rect(it.x,it.y,it.w,it.h,CFG.cPale);for(let i=2;i<it.h-2;i+=3)rect(it.x+2,it.y+i,it.w-4,1,CFG.cMid);}}
+ else if(k==='collect'){if(it.paint){rect(it.x,it.y,it.w+2,it.h+2,CFG.cMid);rect(it.x+1,it.y+1,it.w,it.h,CFG.cInk);rect(it.x+4,it.y+3,3,5,CFG.cPale);}
+  else{rect(it.x,it.y,it.w,it.h,CFG.cPale);rect(it.x+1,it.y+2,it.w-2,1,CFG.cRed);rect(it.x+1,it.y+5,it.w-2,1,CFG.cRed);}}
  else{rect(it.x,it.y,it.w,it.h,CFG.cLilac);if(it.id==='girlA'||it.id==='girlB'){rect(it.x+2,it.y-4,6,5,CFG.cInk);}if(it.id==='bunny'){rect(it.x+2,it.y-6,3,6,CFG.cPale);rect(it.x+9,it.y-6,3,6,CFG.cPale);rect(it.x+4,it.y+4,2,2,CFG.cInk);rect(it.x+8,it.y+4,2,2,CFG.cInk);}}
  const hot=near(it);if(hot)rect(it.x,it.y-5,it.w,2,CFG.cPale);label(it.label||it.id.toUpperCase(),it.x+it.w/2,it.y+it.h+9,hot);}
 function draw(){rect(0,0,W,H,CFG.cInk);const room=G.room;if(!room)return;room.draw&&room.draw();

@@ -27,6 +27,9 @@ Under the dialogue: the **rule line** (this floor's lie %, tell on/off, wrong �
 `ENTER → CLAIM (says X · truth Y · LIE/honest) → TELL (fires / no tell + why) → YOU (trusted/doubted) → RESULT → NEXT`.
 In playtest mode the truth column stays hidden until the player has chosen.
 
+## Content import (2026-08-28) — from the "Bunny Boo Flow" artifact
+Room content now matches the flow doc: floor 1 is the **guest room** (two named beds, key under a pillow, wrong = hair + ribbon), floor 2 is the **gallery** (RABBIT vs GIRL door, wall scratch, note 2 behind the one painting whose girl has no bunny), floor 3 is the **mirror room** (stairs vs small door behind the mirror; the face never tells — the reflected Boo wears the wrong face while the claim line is up). The three notes carry the real invitation fragments and assemble in the secret ending.
+
 ## Review run (2026-08-25) — what was missing vs the GDD, now fixed
 - **The bunny wasn't in any room.** GDD §5: presence only (doorway / back of room) until floor 3, where it stands close. Now: lab — propped on the floor back-centre; floor 1 and doll room — sitting in the doorway beside the exit; floor 2 — under the wall note; floor 3 — standing next to you. Examining it repeats the claim (and re-fires the tell; `repeatTell` toggle). `tellInWorld` makes the in-room bunny flip too.
 - **Torn notes were unreachable** (placed outside the walkable clamp) — secret ending was impossible. Moved inside.

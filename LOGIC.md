@@ -22,11 +22,11 @@ ENTER room
 | floor | claim about | speaker | lie% | tell | wrong → | extra |
 |---|---|---|---|---|---|---|
 | 0 tea party | which CUP is sweet | Vivi (girl) | 100 | on | nothing | Mara foreshadows; bunny doll in corner; any cup → basement |
-| 1 teach | which CHEST has the key | bunny (doorway) | 100 | on | petal | key unlocks EXIT; torn note |
-| 2 contradict | which DOOR | bunny (back wall) + WALL NOTE | 50 | on | petal | note contradicts / agrees / truth / off; liar carries the tell; correct → doll room |
+| 1 guest room (teach) | which PILLOW hides the key | bunny (doorway) | 100 | on | petal | two beds, names stitched in; wrong = hair + ribbon; key unlocks EXIT; note 1 |
+| 2 gallery (contradict) | RABBIT door vs GIRL door | bunny + WALL SCRATCH | 50 | on | petal | scratch contradicts / agrees / truth / off; liar carries the tell; note 2 behind the bunny-less painting; correct → doll room |
 | doll room | — | bunny (doorway) | — | — | — | combat on: 3 dolls, clear to unlock; off: walk-through |
-| 3 betray | which DOOR goes home | bunny (standing, close) | 100 | **off** | petal | "I have never lied to you." mirror; torn note |
-| ending | — | — | — | — | — | 3 torn notes → secret ending; run resets |
+| 3 mirror room (betray) | STAIRS vs SMALL DOOR behind the mirror | bunny (standing, close) | 100 | **off** | petal | face never tells; the reflected Boo wears the wrong face while the claim line is up (`worldTells`); note 3 behind the mirror |
+| ending | — | — | — | — | — | 3 notes → the invitation assembles → secret ending; else grey-morning normal; run resets |
 
 ## Tell lab
 `room=lab`: N rapid claims (`labClaims`, default 10) at `labLie` (0.5), same tell settings, two doors. Ends with score: doors right, lies caught / lies, false alarms / honest, avg ms. `labPetals` makes misses cost petals.
