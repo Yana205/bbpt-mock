@@ -254,7 +254,7 @@ function copyText(t,msg){(navigator.clipboard?navigator.clipboard.writeText(t):P
 /* ---------- SCENARIOS (presets over the per-floor rules) ---------- */
 const SCEN={
  teach:{name:'A — GDD baseline',desc:'The game as designed: F1 always lies (tell), F2 coin flip vs the wall scratch, F3 always lies with the MIRROR as the only tell. No combat.',set:{lie1:1,tell1:true,lie2:0.5,tell2:true,note2:'contradict',lie3:1,tell3:false,falseTell:0,tellDelayMs:0,combat:false,wrong1:'petal',wrong2:'petal',wrong3:'petal'}},
- fight:{name:'B — Combat on',desc:'Same flow as A, but wrong trust also drops you into a 2-doll punishment room, and floor 2 has the mandatory 3-doll playroom. Decides combat keep/cut.',set:{combat:true,wrong1:'doll',wrong2:'doll',wrong3:'doll',lie1:1,tell1:true,lie2:0.5,tell2:true,lie3:1,tell3:false,note2:'contradict'}},
+ fight:{name:'B — Combat on',desc:'Same flow as A. Combat lives ONLY in the mandatory doll playroom after floor 2 — wrong picks just cost a petal. Decides combat keep/cut.',set:{combat:true,wrong1:'petal',wrong2:'petal',wrong3:'petal',lie1:1,tell1:true,lie2:0.5,tell2:true,lie3:1,tell3:false,note2:'contradict'}},
  bluff:{name:'C — Double bluff',desc:'Coin-flip lies on every floor, tells everywhere — but 30% of honest lines ALSO flash the tell. Even the tell can lie ("Trust No One").',set:{lie1:0.5,tell1:true,lie2:0.5,tell2:true,lie3:0.5,tell3:true,falseTell:0.3,note2:'contradict'}},
 };
 if(urlScen&&SCEN[urlScen]){Object.assign(CFG,SCEN[urlScen].set);for(const [k,v] of URLP){if(k in SCEN[urlScen].set){const d=DEF[k];CFG[k]=typeof d==='boolean'?(v==='1'||v==='true'):typeof d==='number'?parseFloat(v):v;}}}

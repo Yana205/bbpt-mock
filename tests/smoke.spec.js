@@ -214,6 +214,18 @@ test('floor 2 after punishment: claim re-rolls and the doors work again', async 
   await waitRoom(page, 'dollroom'); // correct door progresses again
 });
 
+test('scenario B: a wrong pillow costs a petal but stays on the floor — no punishment room', async ({ page }) => {
+  await page.goto(url + '?scenario=fight&seed=3&skipIntro=1&mode=designer');
+  await waitRoom(page, 'floor1');
+  await skip(page);
+  const truth = await page.evaluate(() => BB.roomClaim().truth);
+  const pos = { left: [70, 84], right: [234, 84] };
+  await useAt(page, ...pos[truth === 'left' ? 'right' : 'left']); // wrong on purpose
+  await page.waitForFunction(() => BB.state.petals === 2);
+  await skip(page);
+  expect(await page.evaluate(() => BB.state.room.name)).toBe('floor1'); // still here, no doll room
+});
+
 test('top bar: room tabs switch rooms, PLAY/EDIT toggles the rail', async ({ page }) => {
   await page.goto(url + '?seed=1&mode=designer');
   await waitRoom(page, 'teaparty');
