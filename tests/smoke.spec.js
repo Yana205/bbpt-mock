@@ -282,12 +282,13 @@ test('end card: ending shows stats screen, Space returns to the title', async ({
   await waitRoom(page, 'title');
 });
 
-test('release mode: testbed chrome is gone, sound button stays', async ({ page }) => {
+test('release mode: testbed chrome is gone, audio buttons stay', async ({ page }) => {
   await page.goto(url + '?release=1&seed=1');
   await waitRoom(page, 'title');
   expect(await page.locator('.topbar').isVisible()).toBe(false);
   expect(await page.locator('#hudMode').isVisible()).toBe(false);
-  expect(await page.locator('#bSound').isVisible()).toBe(true);
+  expect(await page.locator('#bMusicT').isVisible()).toBe(true);
+  expect(await page.locator('#bSfxT').isVisible()).toBe(true);
   // backtick must not reveal the admin rail in release
   await page.keyboard.press('Backquote');
   expect(await page.locator('#app').getAttribute('class')).toContain('norail');
@@ -303,7 +304,40 @@ test('audio: music follows the room (music box up top, drone in the house), M to
   await page.keyboard.press('m');
   await page.waitForFunction(() => !BB.audio.on());
   expect(await page.evaluate(() => BB.audio.track())).toBe(null);
-  expect(await page.locator('#bSound').textContent()).toBe('SOUND OFF');
+  expect(await page.locator('#bMusicT').textContent()).toBe('♫ OFF');
+  expect(await page.locator('#bSfxT').textContent()).toBe('SFX OFF');
+});
+
+test('audio: ♫ and SFX toggle independently, M mutes and restores both', async ({ page }) => {
+  await page.goto(url + '?seed=1');
+  await waitRoom(page, 'title');
+  expect(await page.evaluate(() => BB.audio.track())).toBe('musicbox');
+  // music off alone: track stops, sfx stays on
+  await page.click('#bMusicT');
+  await page.waitForFunction(() => BB.audio.track() === null);
+  expect(await page.evaluate(() => BB.audio.sfxOn())).toBe(true);
+  expect(await page.locator('#bMusicT').textContent()).toBe('♫ OFF');
+  expect(await page.locator('#bSfxT').textContent()).toBe('SFX ON');
+  // sfx off alone
+  await page.click('#bSfxT');
+  expect(await page.evaluate(() => BB.audio.sfxOn())).toBe(false);
+  // music back on while sfx stays off
+  await page.click('#bMusicT');
+  await page.waitForFunction(() => BB.audio.track() === 'musicbox');
+  expect(await page.evaluate(() => BB.audio.sfxOn())).toBe(false);
+  // M mutes everything; M again unmutes, keeping the per-channel picks
+  await page.keyboard.press('m');
+  await page.waitForFunction(() => !BB.audio.on());
+  expect(await page.evaluate(() => BB.audio.track())).toBe(null);
+  await page.keyboard.press('m');
+  await page.waitForFunction(() => BB.audio.on());
+  expect(await page.evaluate(() => BB.audio.musicOn())).toBe(true);
+  // while master-muted, clicking ♫ revives only music
+  await page.keyboard.press('m');
+  await page.waitForFunction(() => !BB.audio.on());
+  await page.click('#bMusicT');
+  await page.waitForFunction(() => BB.audio.track() === 'musicbox');
+  expect(await page.evaluate(() => BB.audio.sfxOn())).toBe(false);
 });
 
 test('layout editor: dragging a prop in designer mode persists across reload', async ({ page }) => {
