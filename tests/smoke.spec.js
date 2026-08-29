@@ -292,6 +292,34 @@ test('release mode: testbed chrome is gone, audio buttons stay', async ({ page }
   // backtick must not reveal the admin rail in release
   await page.keyboard.press('Backquote');
   expect(await page.locator('#app').getAttribute('class')).toContain('norail');
+  // game keys are swallowed even on key repeat, or the itch host page scrolls under WASD/arrows
+  const prevented = await page.evaluate(() => {
+    const mk = (code, repeat) => {
+      const e = new KeyboardEvent('keydown', { code, repeat, cancelable: true, bubbles: true });
+      document.body.dispatchEvent(e);
+      return e.defaultPrevented;
+    };
+    return [mk('ArrowDown', true), mk('Space', true), mk('KeyW', true), mk('KeyS', false)];
+  });
+  expect(prevented).toEqual([true, true, true, true]);
+  // release locks the page scroll (nothing for keyboard scroll to grab inside the iframe)
+  expect(await page.evaluate(() => getComputedStyle(document.body).overflow)).toBe('hidden');
+});
+
+test('early boot classes: playtest/release chrome is right from the first paint', async ({ page }) => {
+  // the inline script just inside #app must class the app before the rest of the page even parses
+  await page.addInitScript(() => {
+    window.__clsLog = [];
+    new MutationObserver((muts) => {
+      for (const m of muts) if (m.target.id === 'app') window.__clsLog.push(m.target.className);
+    }).observe(document, { subtree: true, attributes: true, attributeFilter: ['class'] });
+  });
+  await page.goto(url + '?release=1&seed=1');
+  await waitRoom(page, 'title');
+  const first = await page.evaluate(() => window.__clsLog[0]);
+  expect(first).toContain('pt');
+  expect(first).toContain('rel');
+  expect(first).toContain('norail');
 });
 
 test('audio: music follows the room (music box up top, drone in the house), M toggles sound', async ({ page }) => {

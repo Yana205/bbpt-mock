@@ -31,7 +31,7 @@ Under the dialogue: the **rule line** (this floor's lie %, tell on/off, wrong �
 `ENTER → CLAIM (says X · truth Y · LIE/honest) → TELL (fires / no tell + why) → YOU (trusted/doubted) → RESULT → NEXT`.
 In playtest mode the truth column stays hidden until the player has chosen.
 
-## Content import (2026-08-28) — from the "Bunny Boo Flow" artifact
+## Content import (2026-08-28) — from the flow doc
 Room content now matches the flow doc: floor 1 is the **guest room** (two named beds, key under a pillow, wrong = hair + ribbon), floor 2 is the **gallery** (RABBIT vs GIRL door, wall scratch, note 2 behind the one painting whose girl has no bunny), floor 3 is the **mirror room** (stairs vs small door behind the mirror; the face never tells — the reflected Boo wears the wrong face while the claim line is up). The three notes carry the real invitation fragments and assemble in the secret ending.
 
 ## Review run (2026-08-25) — what was missing vs the GDD, now fixed
@@ -60,6 +60,6 @@ PW_EXEC=/path/to/chrome npx playwright test   # or just: npm test (downloads Chr
 `tests/smoke.spec.js` drives the game through `window.BB` (test hook): boot, seed determinism, floor-1 chest flow, a full 5-claim lab run with export, and combat-off doll room.
 
 ## Files
-- `src/page.html` – source (no html/head/body; same content publishes as a Claude artifact)
+- `src/page.html` – source (no html/head/body; `build.js` wraps it into the standalone page)
 - `index.html` – standalone build of the above
 - `art/` – crops of the concept sheets used as sprites (data URIs inside the page)

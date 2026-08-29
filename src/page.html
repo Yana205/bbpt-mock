@@ -1,4 +1,4 @@
-<title>Bunny Boo Testbed</title>
+<title>Bunny Boo</title>
 <style>
 :root{
   --ink:#0e0a14; --plum:#241a3a; --mid:#4a3a6b; --lilac:#9a86c4; --pale:#d9cfee; --red:#c8262e;
@@ -84,6 +84,7 @@ canvas{width:960px;max-width:100%;aspect-ratio:16/9;image-rendering:pixelated;im
 .app.rel .topbar,.app.rel #hudMode,.app.rel .devhelp{display:none}
 /* release: the game scales to fit the window — in the 960×720 itch iframe the canvas lands exactly 1:1 (960×540) */
 .app.rel .stage{min-height:100vh;justify-content:center;padding:10px 12px;gap:8px}
+body:has(.app.rel){overflow:hidden}   /* no internal scrollbar in the itch iframe, nothing for key-scroll to grab */
 .app.rel canvas,.app.rel .hud,.app.rel .help{width:min(960px,100%,calc((100vh - 84px)*16/9))}
 .app.rel .help{justify-content:center}
 #bMusicT{min-width:58px}#bSfxT{min-width:70px}
@@ -114,6 +115,12 @@ canvas{width:960px;max-width:100%;aspect-ratio:16/9;image-rendering:pixelated;im
 </style>
 
 <div class="app" id="app">
+<script>/* early mode classes: applied before the big blocks below parse, so the right chrome shows from the first paint */
+(()=>{const a=document.getElementById('app'),q=new URLSearchParams(location.search);let rel=false;/*RELDEF*/
+const rq=q.get('release');if(rq!==null)rel=rq==='1'||rq==='true';
+let m='playtest';try{m=JSON.parse(localStorage.getItem('bb.cfg3')||'{}').mode||'playtest';}catch(e){}
+if(q.get('mode'))m=q.get('mode');if(rel)m='playtest';
+if(m!=='designer')a.className='app pt norail'+(rel?' rel':'');})();</script>
 <aside class="rail" id="rail">
   <h1>BUNNY BOO · TESTBED</h1>
   <p class="sub">Admin rail. <kbd>`</kbd> hides it. Every value is a Unity default-in-waiting.</p>
@@ -178,7 +185,7 @@ canvas{width:960px;max-width:100%;aspect-ratio:16/9;image-rendering:pixelated;im
     </div>
     <p class="hint">Layout: in EDIT mode click to <b>select</b> (inspector opens), drag to move — an object's interactive radius travels with it. Shift+arrows nudge · Del removes scenery · Ctrl/Cmd+Z undo. Saved locally per room.</p>
     <div class="btns">
-      <button id="cLayCopy" title="Copy this room's positions as JSON — paste to Claude to bake in">COPY LAYOUT</button>
+      <button id="cLayCopy" title="Copy this room's positions as JSON, to bake into the source">COPY LAYOUT</button>
       <button id="cLayReset" title="Forget saved drags for this room">RESET LAYOUT</button>
     </div>
   </details>
@@ -497,13 +504,16 @@ function hud(){document.getElementById('hudRoom').textContent=G.room?G.room.name
 /* ---------- INPUT ---------- */
 const keys={};let actPressed=false,atkPressed=false,escPressed=false;
 const cv=document.getElementById('game');cv.tabIndex=0;
-addEventListener('keydown',e=>{if(e.repeat)return;if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT')return;
+addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT')return;
+ /* swallow game keys on every event incl. repeats — inside the itch iframe an unprevented repeat scroll-chains to the host page */
+ if(!e.ctrlKey&&!e.metaKey&&!e.altKey&&['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyW','KeyA','KeyS','KeyD','KeyZ','KeyX'].includes(e.code))e.preventDefault();
+ if(e.repeat)return;
  if(e.code==='KeyT'&&!CFG.release&&(CFG.mode==='designer'||PROD)){edTestFlip();return;}
  if(CFG.mode==='designer'){
   if((e.ctrlKey||e.metaKey)&&e.code==='KeyZ'){undoEdit();e.preventDefault();return;}
   if(ED.sel&&e.shiftKey&&/^Arrow/.test(e.code)){pushUndo();moveSel(ED.sel.o.x+(e.code==='ArrowLeft'?-1:e.code==='ArrowRight'?1:0),ED.sel.o.y+(e.code==='ArrowUp'?-1:e.code==='ArrowDown'?1:0));e.preventDefault();return;}
   if(ED.sel&&ED.sel.t==='deco'&&(e.code==='Delete'||e.code==='Backspace')){delDeco();e.preventDefault();return;}}
- keys[e.code]=true;if(['KeyZ','Space','Enter'].includes(e.code))actPressed=true;if(e.code==='KeyX')atkPressed=true;if(e.code==='Escape')escPressed=true;if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();});
+ keys[e.code]=true;if(['KeyZ','Space','Enter'].includes(e.code))actPressed=true;if(e.code==='KeyX')atkPressed=true;if(e.code==='Escape')escPressed=true;});
 addEventListener('keyup',e=>keys[e.code]=false);
 cv.addEventListener('click',()=>cv.focus());
 
@@ -681,7 +691,7 @@ document.getElementById('cLayCopy').onclick=()=>{const r=G.room;if(!r)return;
   deco:r.deco?r.deco.map(({k,x,y,flip,dress,s})=>({k,x,y,...(flip?{flip:1}:{}),...(dress?{dress}:{}),...(s&&s!==1?{s}:{})})):undefined,
   items:Object.fromEntries((r.items||[]).map(i=>[i.id,{x:i.x,y:i.y,w:i.w,h:i.h,...(i.reach!=null?{reach:i.reach}:{}),...(i.label?{label:i.label}:{})}])),
   doors:Object.fromEntries((r.doors||[]).map(d=>[d.id,{x:d.x,y:d.y,...(d.reach!=null?{reach:d.reach}:{}),...(d.label?{label:d.label}:{})}]))};
- copyText(JSON.stringify(out,null,1),'layout copied — paste it to Claude to bake it in');};
+ copyText(JSON.stringify(out,null,1),'layout copied');};
 document.getElementById('cLayReset').onclick=()=>{if(!G.room)return;delete LAY[G.room.name];saveLay();ED.sel=null;selSync();log('layout reset','sys');goto(G.room.name);};
 
 /* claim helper: rolls a lie with the seeded RNG, records it, returns {text, said, truth, lie, tell} */

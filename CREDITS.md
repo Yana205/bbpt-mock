@@ -6,7 +6,7 @@ For the itch.io page (copy-paste ready below). Not shown in-game.
 
 - Design & direction — Yana Ifraimov
 - Tea-party pixel art (table, chairs, tea set, carpet, window, bows, plush bunny, character reference) — Yana's friends (`art/friends/`)
-- Code & procedural sprites — built with Claude Code
+- Code & procedural sprites — Yana Ifraimov
 
 ## Music
 

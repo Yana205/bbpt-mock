@@ -8,8 +8,12 @@ fs.writeFileSync('index.html', page);
 console.log('built index.html');
 if (process.argv[2] === 'itch') {
   // the itch upload is the same file with release chrome on by default
-  const rel = page.replace('skipIntro:false,release:false,', 'skipIntro:false,release:true,');
+  let rel = page.replace('skipIntro:false,release:false,', 'skipIntro:false,release:true,');
   if (rel === page) throw new Error('release flag not found in DEF');
+  // the early-classes script (first paint, before the big blocks parse) gets the same default
+  const rel2 = rel.replace('let rel=false;/*RELDEF*/', 'let rel=true;/*RELDEF*/');
+  if (rel2 === rel) throw new Error('RELDEF marker not found in the early script');
+  rel = rel2;
   fs.mkdirSync('dist/itch', { recursive: true });
   fs.writeFileSync('dist/itch/index.html', rel);
   const { execSync } = require('child_process');
