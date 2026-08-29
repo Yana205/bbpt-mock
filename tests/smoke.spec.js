@@ -574,3 +574,18 @@ test('every dialog renders in-canvas with the Figma box — the DOM textbox is g
   await page.waitForFunction(() => BB.dialogOpen()); // floors speak through the same in-canvas box
   expect(await page.locator('#dlg').count()).toBe(0);
 });
+
+test('HUD health bar: Figma bunny bar shows instead of hearts and drops a bunny with a petal', async ({ page }) => {
+  await page.goto(url + '?seed=3&skipIntro=1&lie1=1&wrong1=petal');
+  await waitRoom(page, 'floor1');
+  await skip(page);
+  const bar = page.locator('#hudHealth');
+  await page.waitForFunction(() => !document.getElementById('hudHealth').hidden);
+  expect(await page.locator('#hudPetals').isHidden()).toBe(true); // hearts replaced
+  const full = await bar.getAttribute('src');
+  const truth = await page.evaluate(() => BB.roomClaim().truth);
+  await useAt(page, ...(truth === 'left' ? [271, 84] : [48, 84])); // wrong pillow
+  await page.waitForFunction(() => BB.state.petals === 2);
+  expect(await bar.getAttribute('src')).not.toBe(full); // 2/3 state swapped in
+  expect(await bar.isHidden()).toBe(false);
+});
