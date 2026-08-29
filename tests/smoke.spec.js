@@ -278,6 +278,28 @@ test('audio: music follows the room (music box up top, drone in the house), M to
   expect(await page.locator('#bSound').textContent()).toBe('SOUND OFF');
 });
 
+test('layout editor: dragging a prop in designer mode persists across reload', async ({ page }) => {
+  const u = url + '?seed=1&room=teaparty&mode=designer';
+  await page.goto(u);
+  await waitRoom(page, 'teaparty');
+  await skip(page);
+  const box = await page.locator('#game').boundingBox();
+  const s = box.width / 320;
+  const before = await page.evaluate(() => BB.state.room.deco.at(-1).x); // the plush
+  await page.mouse.move(box.x + (before + 22) * s, box.y + 94 * s);
+  await page.mouse.down();
+  await page.mouse.move(box.x + (before - 40) * s, box.y + 94 * s, { steps: 4 });
+  await page.mouse.up();
+  const after = await page.evaluate(() => BB.state.room.deco.at(-1).x);
+  expect(after).toBeLessThan(before);
+  await page.goto(u); // reload: saved layout re-applies
+  await waitRoom(page, 'teaparty');
+  expect(await page.evaluate(() => BB.state.room.deco.at(-1).x)).toBe(after);
+  await page.click('#cLayReset'); // reset restores the baked-in layout
+  await waitRoom(page, 'teaparty');
+  expect(await page.evaluate(() => BB.state.room.deco.at(-1).x)).toBe(before);
+});
+
 test('top bar: room tabs switch rooms, PLAY/EDIT toggles the rail', async ({ page }) => {
   await page.goto(url + '?seed=1&mode=designer');
   await waitRoom(page, 'title');

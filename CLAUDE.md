@@ -43,7 +43,7 @@ Keep all tests green. Add a test for every behaviour change; the `window.BB` hoo
 
 ## Modes
 - `mode: 'playtest'` = **PLAY** (top bar): rail hidden, log hides LIE/honest, flow strip hides truth until decision. What a tester gets.
-- `mode: 'designer'` = **EDIT**: everything visible. Backtick toggles the rail independently.
+- `mode: 'designer'` = **EDIT**: everything visible. Backtick toggles the rail independently. **Drag any deco/item/door on the canvas with the mouse** — positions persist per room in `localStorage['bb.layout1']`; COPY LAYOUT (rail → Rooms & cheats) exports JSON to bake in, RESET LAYOUT forgets. Rooms declare scenery in `r.deco` arrays; `bigChar:true` (tea party) draws the player as the native-scale `charRef` sprite.
 - `release: true` (`?release=1`, default in the itch build): playtest + no topbar/mode pill/backtick — only the game, HUD, sound button, and short help line. Never persisted to localStorage.
 - Boot goes to the **title card** (Space starts); the ending goes to an **end card** (stats, Space → title). `?room=` / `skipIntro` skip both, so test URLs are unchanged.
 

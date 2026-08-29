@@ -169,6 +169,11 @@ canvas{width:960px;max-width:100%;aspect-ratio:16/9;image-rendering:pixelated;im
       <button id="cUnlock" title="Unlock every door in the room">UNLOCK DOORS</button>
       <button id="cReveal" title="Red dot on the honest door/chest">REVEAL TRUTH</button>
     </div>
+    <p class="hint">Layout: in EDIT mode drag any prop, item or door on the canvas with the mouse. Saved locally per room.</p>
+    <div class="btns">
+      <button id="cLayCopy" title="Copy this room's positions as JSON — paste to Claude to bake in">COPY LAYOUT</button>
+      <button id="cLayReset" title="Forget saved drags for this room">RESET LAYOUT</button>
+    </div>
   </details>
 
   <div class="grp">TUNING</div>
@@ -418,7 +423,33 @@ function spr(name,x,y,flip){const im=ART[name];if(!im||!im.naturalWidth)return;i
 /* soft "got it" moment: pale glow + a pixel key floating up from (x,y). Deliberately quiet — no red, no shake. */
 function keyFx(x,y){G.glow=0.5;G.fx.push({t:0,dur:0.85,x,y,draw(f){const dy=-14*(1-(1-f)*(1-f));ctx.globalAlpha=1-f*f;const kx=Math.round(this.x),ky=Math.round(this.y+dy);rect(kx,ky+1,3,3,CFG.cPale);rect(kx+1,ky+2,1,1,CFG.cPlum);rect(kx+3,ky+2,5,1,CFG.cPale);rect(kx+6,ky+3,1,2,CFG.cPale);rect(kx+8,ky+3,1,2,CFG.cPale);ctx.globalAlpha=1;}});}
 function mkRoom(name,build){R[name]={name,build};}
-function goto(name,opts={}){if(G.busy)return;if(D)endDialog();G.busy=true;G.fade=1;G.fx=[];setTimeout(()=>{const r=R[name];G.dolls=[];const b=r.build(opts);b.name=name;b.items=b.items||[];b.doors=b.doors||[];b.claim=b.claim||null;G.room=b;G.player.x=G.room.spawn?.x??160;G.player.y=G.room.spawn?.y??140;G.player.hurt=0;roomSel.value=name;syncTabs();hud();log(`enter ${name}`,'sys');rec('enter',{room:name});flowReset();flow(0,name,'on');ruleLine();G.busy=false;G.fade=-1;musicSync();if(!b.quiet)sfx('door');if(G.room.onEnter)G.room.onEnter();},250);}
+function goto(name,opts={}){if(G.busy)return;if(D)endDialog();G.busy=true;G.fade=1;G.fx=[];setTimeout(()=>{const r=R[name];G.dolls=[];const b=r.build(opts);b.name=name;b.items=b.items||[];b.doors=b.doors||[];b.claim=b.claim||null;applyLayout(b);G.room=b;G.player.x=G.room.spawn?.x??160;G.player.y=G.room.spawn?.y??140;G.player.hurt=0;roomSel.value=name;syncTabs();hud();log(`enter ${name}`,'sys');rec('enter',{room:name});flowReset();flow(0,name,'on');ruleLine();G.busy=false;G.fade=-1;musicSync();if(!b.quiet)sfx('door');if(G.room.onEnter)G.room.onEnter();},250);}
+
+/* ---------- LAYOUT EDITOR (designer mode: drag deco/items/doors on the canvas; saved per room) ---------- */
+let LAY={};try{const s=localStorage.getItem('bb.layout1');if(s)LAY=JSON.parse(s);}catch(e){}
+function saveLay(){try{localStorage.setItem('bb.layout1',JSON.stringify(LAY));}catch(e){}}
+function applyLayout(room){const L=LAY[room.name];if(!L)return;
+ if(room.deco&&L.deco)L.deco.forEach((p,i)=>{if(room.deco[i]&&p){room.deco[i].x=p.x;room.deco[i].y=p.y;}});
+ if(L.items)for(const it of room.items){const p=L.items[it.id];if(p){it.x=p.x;it.y=p.y;}}
+ if(L.doors)for(const d of room.doors){const p=L.doors[d.id];if(p){d.x=p.x;d.y=p.y;}}}
+function decoBox(d){if(d.k==='girl')return{x:d.x,y:d.y,w:20,h:44};const im=ART[d.k];return{x:d.x,y:d.y,w:(im&&im.naturalWidth)||10,h:(im&&im.naturalHeight)||10};}
+let drag=null;
+function canvasPos(e){const r=cv.getBoundingClientRect();return{x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height};}
+cv.addEventListener('mousedown',e=>{if(CFG.mode!=='designer'||!G.room)return;const m=canvasPos(e),room=G.room;
+ const hit=b=>m.x>=b.x&&m.x<=b.x+b.w&&m.y>=b.y&&m.y<=b.y+b.h;
+ if(room.deco)for(let i=room.deco.length-1;i>=0;i--){if(hit(decoBox(room.deco[i]))){drag={t:'deco',o:room.deco[i],i,dx:m.x-room.deco[i].x,dy:m.y-room.deco[i].y};e.preventDefault();return;}}
+ for(const it of room.items)if(!it.got&&hit({x:it.x-2,y:it.y-2,w:it.w+4,h:it.h+4})){drag={t:'item',o:it,dx:m.x-it.x,dy:m.y-it.y};e.preventDefault();return;}
+ for(const d of room.doors)if(hit({x:d.x-2,y:d.y-2,w:d.w+4,h:d.h+10})){drag={t:'door',o:d,dx:m.x-d.x,dy:m.y-d.y};e.preventDefault();return;}});
+addEventListener('mousemove',e=>{if(!drag)return;const m=canvasPos(e);drag.o.x=Math.round(m.x-drag.dx);drag.o.y=Math.round(m.y-drag.dy);});
+addEventListener('mouseup',()=>{if(!drag||!G.room)return;const L=LAY[G.room.name]=LAY[G.room.name]||{};
+ if(drag.t==='deco'){L.deco=L.deco||[];L.deco[drag.i]={x:drag.o.x,y:drag.o.y};}
+ else{const k=drag.t==='item'?'items':'doors';L[k]=L[k]||{};L[k][drag.o.id]={x:drag.o.x,y:drag.o.y};}
+ saveLay();log(`layout: ${drag.t} ${drag.o.id||drag.o.k} → (${drag.o.x},${drag.o.y})`,'sys');drag=null;});
+document.getElementById('cLayCopy').onclick=()=>{const r=G.room;if(!r)return;
+ const out={room:r.name,deco:r.deco?r.deco.map(({k,x,y,flip,dress})=>({k,x,y,...(flip?{flip}:{}),...(dress?{dress}:{})})):undefined,
+  items:Object.fromEntries(r.items.map(i=>[i.id,{x:i.x,y:i.y}])),doors:Object.fromEntries(r.doors.map(d=>[d.id,{x:d.x,y:d.y}]))};
+ copyText(JSON.stringify(out,null,1),'layout copied — paste it to Claude to bake it in');};
+document.getElementById('cLayReset').onclick=()=>{if(!G.room)return;delete LAY[G.room.name];saveLay();log('layout reset','sys');goto(G.room.name);};
 
 /* claim helper: rolls a lie with the seeded RNG, records it, returns {text, said, truth, lie, tell} */
 function rollClaim(room,speaker,options,textFor,lieP,tellOn=true){const truth=options[Math.floor(rng()*options.length)];const lie=rng()<lieP;const said=lie?options.find(o=>o!==truth):truth;const tell=tellOn&&CFG.tellType!=='none'&&(lie||rng()<CFG.falseTell);
@@ -475,27 +506,29 @@ mkRoom('endcard',(o)=>{const r={spawn:{x:-99,y:-99},endcard:true,nochar:true,qui
   if(Math.floor(performance.now()/600)%2){ctx.fillStyle=CFG.cPale;ctx.fillText('PRESS SPACE TO PLAY AGAIN',W/2,146);}
   ctx.textAlign='left';};return r;});
 
-mkRoom('teaparty',()=>{const r={spawn:{x:204,y:132},skippable:true,floor:0,rule:'TEACH SAFELY. Talk to Vivi: she claims which cup is sweet. Any cup → basement.'};
- r.items=[{id:'girlA',x:96,y:76,w:10,h:14,hidden:true,label:'VIVI',kind:'npc',async use(){if(r.claim)return;r.claim=rollClaim('teaparty','girl',['left','right'],s=>`Oh you came! Drink up — the ${s} cup is the sweet one. Promise.`,CFG.lie0,CFG.tell0);await say(['Vivi smiles with all her teeth.',r.claim.text],'girl',{tellAt:r.claim.tell?1:-1});}},
-  {id:'girlB',x:214,y:76,w:10,h:14,hidden:true,label:'MARA',kind:'npc',async use(){await say(['Mara is looking at the bunny in the corner, not at you.','"...she said you can go home after."'],'girl');}},
+mkRoom('teaparty',()=>{const r={spawn:{x:204,y:132},skippable:true,bigChar:true,floor:0,rule:'TEACH SAFELY. Talk to Vivi: she claims which cup is sweet. Any cup → basement.'};
+ r.items=[{id:'girlA',x:92,y:86,w:12,h:16,hidden:true,label:'VIVI',kind:'npc',async use(){if(r.claim)return;r.claim=rollClaim('teaparty','girl',['left','right'],s=>`Oh you came! Drink up — the ${s} cup is the sweet one. Promise.`,CFG.lie0,CFG.tell0);await say(['Vivi smiles with all her teeth.',r.claim.text],'girl',{tellAt:r.claim.tell?1:-1});}},
+  {id:'girlB',x:208,y:86,w:12,h:16,hidden:true,label:'MARA',kind:'npc',async use(){await say(['Mara is looking at the bunny in the corner, not at you.','"...she said you can go home after."'],'girl');}},
   {id:'left',x:146,y:88,w:10,h:8,hidden:true,label:'CUP L',kind:'pick',use:()=>drink('left')},{id:'right',x:166,y:88,w:10,h:8,hidden:true,label:'CUP R',kind:'pick',use:()=>drink('right')},
   {id:'bunny',x:248,y:104,w:14,h:18,hidden:true,label:'BUNNY',kind:'npc',async use(){await say(['A big stuffed bunny. Its button eyes catch the light.','It is definitely just a doll.'],null);}}];
  async function drink(side){if(r.claim){recDecision(side);flowDecide(side,side===r.claim.truth,'→ basement either way');if(side!==r.claim.truth&&CFG.wrong0!=='none'){if(CFG.wrong0==='petal')G.petals--;G.scare=CFG.scareMs/1000;hud();}}const honest=r.claim&&!r.claim.lie&&r.claim.said===side;await say([`You drink the ${side} cup.`,honest?'Sweet. Sickly sweet.':'It tastes like sleep.','...','...'],null);log('tea party complete → basement','sys');goto('floor1');}
  r.onEnter=async()=>{await say(['New town. New school. A "welcome" tea party.','You are not sure why the popular girls invited you.'],null);};
  /* the one warm room: friends' pink props on the house's purple bones */
- r.draw=()=>{rect(40,20,240,140,CFG.cPlum);rect(40,20,240,30,CFG.cInk);rect(40,50,240,2,CFG.cMid);rect(40,20,2,140,CFG.cMid);rect(278,20,2,140,CFG.cMid);
-  spr('windowLarge',64,2);spr('windowLarge',199,2,true);
-  spr('bow',124,30);spr('bow',176,30);
-  spr('carpet',73,54);
-  spr('chairFront',144,2);
-  spr('chairSide',82,56);spr('chairSide',198,56,true);
-  spr('table',114,56);
-  spr('teapot',144,54);
-  spr('plate',126,84);spr('plate',172,84);
-  spr('teacup',142,82);spr('teacup',164,82);
-  spr('chairBack',144,96);
-  spr('bunny',234,62);
-  miniGirl(96,76,'#c2839a');miniGirl(214,76,'#a35f75');};
+ /* deco = draggable scenery (designer mode: drag with the mouse, COPY LAYOUT in the rail) */
+ r.deco=[
+  {k:'windowLarge',x:64,y:2},{k:'windowLarge',x:199,y:2,flip:true},
+  {k:'bow',x:124,y:30},{k:'bow',x:176,y:30},
+  {k:'carpet',x:73,y:54},
+  {k:'chairFront',x:144,y:2},
+  {k:'chairSide',x:82,y:56},{k:'chairSide',x:198,y:56,flip:true},
+  {k:'girl',x:88,y:64,dress:'#c2839a'},{k:'girl',x:206,y:64,dress:'#a35f75',flip:true},
+  {k:'table',x:114,y:56},
+  {k:'teapot',x:144,y:54},
+  {k:'plate',x:126,y:84},{k:'plate',x:172,y:84},
+  {k:'teacup',x:142,y:82},{k:'teacup',x:164,y:82},
+  {k:'chairBack',x:144,y:96},
+  {k:'bunny',x:234,y:62}];
+ r.draw=()=>{rect(40,20,240,140,CFG.cPlum);rect(40,20,240,30,CFG.cInk);rect(40,50,240,2,CFG.cMid);rect(40,20,2,140,CFG.cMid);rect(278,20,2,140,CFG.cMid);};
  return r;});
 
 mkRoom('floor1',()=>{ const r={spawn:{x:155,y:140},floor:1,rule:'TEACH THE BITE. Bunny claims which pillow hides the key. Right pillow → key → exit unlocks'};r.items=[
@@ -605,6 +638,19 @@ function overlap(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
 function label(t,cx,y,hot,always){if(CFG.mode!=='designer'&&!hot&&!always)return;ctx.font='7px monospace';ctx.textAlign='center';ctx.fillStyle=hot?CFG.cPale:CFG.cLilac;ctx.fillText(t,Math.round(cx),Math.round(y));ctx.textAlign='left';}
 /* small procedural characters (hand-placed rects, locked palette — no image assets) */
 function miniGirl(x,y,dress){rect(x,y-6,10,5,CFG.cInk);rect(x+1,y-3,8,5,CFG.cPale);rect(x+2,y-1,2,2,CFG.cInk);rect(x+6,y-1,2,2,CFG.cInk);rect(x-1,y-4,2,9,CFG.cInk);rect(x+9,y-4,2,9,CFG.cInk);rect(x+1,y+2,8,9,dress);rect(x+2,y+11,2,3,CFG.cPale);rect(x+6,y+11,2,3,CFG.cPale);}
+/* chair-scale seated girl for the tea party (matches the friends' furniture proportions) */
+function bigGirl(x,y,dress){
+ rect(x+2,y,16,12,CFG.cInk);                                        // hair
+ rect(x+4,y+3,12,9,'#f0cdd2');                                      // face
+ rect(x+4,y+3,12,2,CFG.cInk);                                       // fringe
+ rect(x+6,y+7,2,2,CFG.cInk);rect(x+12,y+7,2,2,CFG.cInk);            // eyes
+ rect(x+9,y+10,2,1,'#a35f75');                                      // mouth
+ rect(x,y+2,3,28,CFG.cInk);rect(x+17,y+2,3,28,CFG.cInk);            // long hair
+ rect(x+4,y+12,12,11,dress);                                        // torso
+ rect(x+3,y+13,2,8,'#f0cdd2');rect(x+15,y+13,2,8,'#f0cdd2');        // arms
+ rect(x+2,y+23,16,11,dress);                                        // skirt
+ rect(x+6,y+34,3,8,'#f0cdd2');rect(x+11,y+34,3,8,'#f0cdd2');        // legs
+ rect(x+5,y+42,4,2,CFG.cInk);rect(x+11,y+42,4,2,CFG.cInk);}         // shoes
 function drawPlayer(p){const x=Math.round(p.x-1),y=Math.round(p.y-6);
  rect(x,y+1,12,9,CFG.cMid);                                        // hair
  if(p.dir!=='up'){const ex=p.dir==='left'?-1:p.dir==='right'?1:0;rect(x+2,y+3,8,6,CFG.cPale);rect(x+3+ex,y+5,2,2,CFG.cInk);rect(x+7+ex,y+5,2,2,CFG.cInk);}
@@ -619,7 +665,7 @@ function drawDoll(x,y,hit){const c1=hit?CFG.cPale:CFG.cLilac;
  rect(x,y+1,10,11,hit?CFG.cPale:CFG.cMid);                         // dress
  rect(x+2,y+12,2,2,c1);rect(x+6,y+12,2,2,c1);}
 function drawItem(it){const k=it.kind||'npc';
- if(it.hidden){const hot=near(it);if(hot)rect(it.x,it.y-5,it.w,2,CFG.cPale);label(it.label||it.id.toUpperCase(),it.x+it.w/2,it.y+it.h+9,hot);return;}
+ if(it.hidden){const hot=near(it);if(CFG.mode==='designer'){ctx.globalAlpha=0.4;rect(it.x,it.y,it.w,it.h,CFG.cLilac);ctx.globalAlpha=1;}if(hot)rect(it.x,it.y-5,it.w,2,CFG.cPale);label(it.label||it.id.toUpperCase(),it.x+it.w/2,it.y+it.h+9,hot);return;}
  if(k==='pick'){if(it.pillow){if(it.open){rect(it.x-3,it.y-4,it.w,it.h,CFG.cPale);rect(it.x+4,it.y+3,6,2,CFG.cPale);rect(it.x+9,it.y+2,2,4,CFG.cPale);}else{rect(it.x,it.y,it.w,it.h,CFG.cPale);rect(it.x+2,it.y+2,it.w-4,1,CFG.cLilac);}}
   else if(it.id.startsWith('left')||it.id.startsWith('right')){if(it.h>=10){rect(it.x,it.y,it.w,it.h,CFG.cMid);if(it.open){rect(it.x,it.y-4,it.w,3,CFG.cLilac);rect(it.x+2,it.y+2,it.w-4,it.h-4,CFG.cInk);}else{rect(it.x,it.y,it.w,4,CFG.cLilac);rect(it.x+it.w/2-1,it.y+5,2,3,CFG.cPale);}}else{rect(it.x,it.y,it.w,it.h,CFG.cPale);rect(it.x+1,it.y+1,it.w-2,it.h-2,CFG.cLilac);}}}
  else if(k==='bunny'){const flip=CFG.tellInWorld&&tellVis&&(CFG.tellType==='faceflip'||CFG.tellType==='redpixel');
@@ -640,6 +686,7 @@ function drawItem(it){const k=it.kind||'npc';
  else{rect(it.x,it.y,it.w,it.h,CFG.cLilac);if(it.id==='girlA'||it.id==='girlB'){rect(it.x+2,it.y-4,6,5,CFG.cInk);}if(it.id==='bunny'){rect(it.x+2,it.y-6,3,6,CFG.cPale);rect(it.x+9,it.y-6,3,6,CFG.cPale);rect(it.x+4,it.y+4,2,2,CFG.cInk);rect(it.x+8,it.y+4,2,2,CFG.cInk);}}
  const hot=near(it);if(hot)rect(it.x,it.y-5,it.w,2,CFG.cPale);label(it.label||it.id.toUpperCase(),it.x+it.w/2,it.y+it.h+9,hot);}
 function draw(){rect(0,0,W,H,CFG.cInk);const room=G.room;if(!room)return;room.draw&&room.draw();
+ if(room.deco)for(const d of room.deco){if(d.k==='girl')bigGirl(d.x,d.y,d.dress);else spr(d.k,d.x,d.y,d.flip);}
  if(room.candle&&CFG.worldTells){const f=G.candleFlicker>0&&Math.floor(performance.now()/60)%2===0;rect(room.candle.x-1,room.candle.y,2,6,CFG.cPale);rect(room.candle.x-1,room.candle.y-3,2,3,f?CFG.cInk:CFG.cRed);label('CANDLE',room.candle.x,room.candle.y+13,false);}
  if(CFG.mode==='designer'){if(room.floor!=null){ctx.font='8px monospace';ctx.fillStyle=CFG.cLilac;ctx.fillText(`FLOOR ${room.floor} · ${['TEA PARTY','TEACH','CONTRADICT','BETRAY'][room.floor]}`,44,14);}else{ctx.font='8px monospace';ctx.fillStyle=CFG.cLilac;ctx.fillText(room.name.toUpperCase(),44,14);}}
  for(const d of room.doors){rect(d.x-2,d.y-2,d.w+4,d.h+10,CFG.cMid);rect(d.x,d.y,d.w,d.h+6,d.locked?CFG.cInk:CFG.cLilac);if(d.locked){rect(d.x+6,d.y+3,4,4,CFG.cRed);}if(near(d))rect(d.x,d.y-5,d.w,2,CFG.cPale);label(d.label||d.id.toUpperCase(),d.x+d.w/2,d.y+d.h+14,near(d));
@@ -648,7 +695,9 @@ function draw(){rect(0,0,W,H,CFG.cInk);const room=G.room;if(!room)return;room.dr
   if(G.reveal&&room.claim&&it.id===room.claim.truth)rect(it.x+it.w/2-2,it.y+it.h+2,4,4,CFG.cRed);}
  for(const d of G.dolls)drawDoll(d.x,d.y,d.hit>0);
  for(const f of G.fx)f.draw(Math.min(1,f.t/f.dur));
- const p=G.player;if(!room.nochar&&!(p.hurt>0&&Math.floor(performance.now()/80)%2))drawPlayer(p);
+ const p=G.player;if(!room.nochar&&!(p.hurt>0&&Math.floor(performance.now()/80)%2)){
+  if(room.bigChar&&ART.charRef&&ART.charRef.naturalWidth)ctx.drawImage(ART.charRef,Math.round(p.x+p.w/2-18),Math.round(p.y+p.h-74));
+  else drawPlayer(p);}
  if(G.atk.t>0){const hb=hitbox();rect(hb.x,hb.y,hb.w,hb.h,CFG.cPale);}
  if(G.glow>0){ctx.fillStyle=CFG.cPale;ctx.globalAlpha=Math.min(0.16,G.glow*0.32);ctx.fillRect(0,0,W,H);ctx.globalAlpha=1;}
  if(G.scare>0){ctx.fillStyle=CFG.cRed;ctx.globalAlpha=Math.min(0.6,G.scare);ctx.fillRect(0,0,W,H);ctx.globalAlpha=1;ctx.fillStyle=CFG.cInk;for(let i=0;i<12;i++){const x=Math.floor(Math.random()*W),y=Math.floor(Math.random()*H);ctx.fillRect(x,y,3,3);}}
