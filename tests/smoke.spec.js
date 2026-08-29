@@ -304,6 +304,11 @@ test('release mode: testbed chrome is gone, audio buttons stay', async ({ page }
   expect(prevented).toEqual([true, true, true, true]);
   // release locks the page scroll (nothing for keyboard scroll to grab inside the iframe)
   expect(await page.evaluate(() => getComputedStyle(document.body).overflow)).toBe('hidden');
+  // frame UI: border art shows, help line is gone, health bar sits in the frame's bar slot
+  expect(await page.locator('#frameUI').isVisible()).toBe(true);
+  expect(await page.locator('.help').first().isVisible()).toBe(false);
+  const stage = await page.locator('.stage').boundingBox();
+  expect(Math.abs(stage.width / stage.height - 4 / 3)).toBeLessThan(0.01);
 });
 
 test('early boot classes: playtest/release chrome is right from the first paint', async ({ page }) => {
