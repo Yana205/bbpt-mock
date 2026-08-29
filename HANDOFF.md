@@ -31,7 +31,7 @@ npm run build:itch
 `src/page.html` is the only source. Never hand-edit the `/*ART*/ /*AUDIO*/ /*FONTS*/` marker blocks.
 
 ## The game (current state)
-Title card → tea party (Figma room, in-canvas dialog boxes with character portraits, tell fires on the word "Promise") → floors 1–3 (teach / contradict / betray; purple-remapped hero carries the bunny) → doll playroom (dolls sit asleep, stand after Boo's line) → two endings gated on 3 torn notes. Interact cue = pulsing rectangle around the nearest usable object; diagonal movement works; soft typing blips (SFX synth — **no tell SFX ever**, the tell stays visual-only).
+Title card → tea party (Figma room, tell fires on the word "Promise"; **every** dialog game-wide renders in-canvas in the Figma text box with character portraits — no DOM textbox) → floors 1–3 (teach / contradict / betray; purple-remapped hero carries the bunny) → doll playroom (dolls sit asleep, stand after Boo's line) → two endings gated on 3 torn notes. Interact cue = pulsing rectangle around the nearest usable object; diagonal movement works; soft typing blips (SFX synth — **no tell SFX ever**, the tell stays visual-only).
 
 ## Editing workflow
 - **EDIT mode keeps only what's needed day-to-day**: click-select + drag-move (inspector shows X/Y etc., corner grip resizes) and the **♫ MUSIC** window (global + per-room track from 5 embedded loops + uploads, volume, previews). Everything else (cards, sprite uploads, palette, tells) still lives in the rail, collapsed — deeper edits go through Claude Code in this repo.
@@ -42,7 +42,7 @@ Title card → tea party (Figma room, in-canvas dialog boxes with character port
 2. **Gotcha**: Figma metadata reports *flipped* layers at their transform origin, not visual bounds (visual x = x − width). Verify against the frame export; the tea room was diffed to 0 differing pixels.
 3. New art: drop PNGs into `art/runtime/` (camelCase filename = `ART` key) + `npm run assets`. Sources archived in `art/friends/` (incl. `figma-room/`).
 4. Cropped-fill layers (like the dialog portraits) export via node *screenshots*, not raw fills.
-5. Dialog boxes: `teaBox` (288×47 at 16,125) + portraits `portraitVivi/Mara/Bunny/Hero` — the tea party draws dialogs in-canvas (`drawTeaDialog`); other rooms use the classic DOM box. To extend to more rooms: give the room `dlgSkin:true` and add portraits to `TEAPORT`.
+5. Dialog boxes: `teaBox` (288×47 at 16,125) + portraits `portraitVivi/Mara/Bunny/Hero` (= Figma Page 1 enemy1/enemy2/bunnydoll/char_ref portraits) — **all rooms** draw dialogs in-canvas (`drawDialog`); the DOM box is removed. Speakers map via `DLGPORT` (unknown/narrator → hero); to add a character, add its portrait PNG + a `DLGPORT` entry.
 
 ## Asset & license inventory
 - **Friends' art** (tea room, hero, girls, plush, text boxes, portraits): yours — from the BB Figma file.

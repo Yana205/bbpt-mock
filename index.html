@@ -59,15 +59,6 @@ button.on{background:var(--mid);border-color:var(--lilac)}
 .hud b{color:var(--pale)}
 .hud .petals span{color:var(--red);font-size:16px;letter-spacing:2px}
 canvas{width:960px;max-width:100%;aspect-ratio:16/9;image-rendering:pixelated;image-rendering:crisp-edges;background:#000;border:2px solid var(--mid);outline:1px solid var(--ink)}
-.dlg{width:960px;max-width:100%;min-height:96px;background:var(--plum);border:2px solid var(--lilac);display:grid;grid-template-columns:80px 1fr;gap:12px;padding:10px;font-family:var(--fd);font-size:15px;line-height:1.5;position:relative}
-.dlg.hidden{visibility:hidden}
-.dlg canvas{width:64px;height:64px;border:1px solid var(--mid);outline:none;aspect-ratio:1}
-.dlg .who{font-size:10px;color:var(--lilac);letter-spacing:.12em;margin-bottom:4px}
-.dlg .txt{white-space:pre-wrap;min-height:48px}
-.dlg .txt.glitch{animation:gl .08s steps(2) 6}
-@keyframes gl{50%{transform:translateX(2px);color:var(--red)}}
-.dlg .more{position:absolute;right:12px;bottom:6px;font-size:10px;color:var(--lilac);animation:bl 1s steps(2) infinite}
-@keyframes bl{50%{opacity:0}}
 .flow{width:960px;max-width:100%;display:grid;grid-template-columns:repeat(6,1fr);gap:6px;font-family:var(--fd);font-size:10px}
 .flow .n{background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:6px 8px;min-height:58px;position:relative}
 .flow .n::after{content:"▶";position:absolute;right:-9px;top:50%;transform:translateY(-50%);color:var(--mid);font-size:9px}
@@ -119,7 +110,6 @@ canvas{width:960px;max-width:100%;aspect-ratio:16/9;image-rendering:pixelated;im
 .filerow{margin:6px 0}
 .filerow label{display:block;font-size:11px;color:var(--pale);margin-bottom:2px}
 .filerow input[type=file]{width:100%;font-size:10px;color:var(--lilac)}
-@media (prefers-reduced-motion:reduce){.dlg .txt.glitch,.dlg .more{animation:none}}
 @media (max-width:900px){.app{grid-template-columns:1fr}.rail{max-height:none}}
 </style>
 
@@ -274,11 +264,6 @@ canvas{width:960px;max-width:100%;aspect-ratio:16/9;image-rendering:pixelated;im
   <div class="hud"><div>ROOM <b id="hudRoom">—</b></div><div class="petals"><span id="hudPetals"></span></div><div>KEY <b id="hudKey">—</b></div><div>NOTES <b id="hudNotes">0/3</b></div><div><button id="bSound" title="Sound on/off (M)">SOUND ON</button> <span class="pill" id="hudMode">PLAYTEST</span></div></div>
   <canvas id="game" width="320" height="180"></canvas>
   <button id="prodExit" class="prodexit hidden" title="Leave the player view">✎ EXIT PLAYER VIEW · T</button>
-  <div class="dlg hidden" id="dlg">
-    <canvas id="portrait" width="64" height="64"></canvas>
-    <div><div class="who" id="who"></div><div class="txt" id="txt"></div></div>
-    <div class="more" id="more">▼</div>
-  </div>
   <div class="rule" id="rule"></div>
   <div class="help flowhelp" style="margin-top:-6px"><span>LIVE FLOW · not buttons — fills in as you play: talk to the speaker → watch the tell → pick → see the result</span></div>
   <div class="flow" id="flow">
@@ -507,32 +492,16 @@ addEventListener('keyup',e=>keys[e.code]=false);
 cv.addEventListener('click',()=>cv.focus());
 
 /* ---------- DIALOG ---------- */
-const dlg=document.getElementById('dlg'),txt=document.getElementById('txt'),who=document.getElementById('who'),pc=document.getElementById('portrait').getContext('2d');
 let D=null;
-function say(lines,speaker,opts={}){return new Promise(res=>{D={lines,i:0,shown:0,speaker,tellAt:opts.tellAt??-1,tellChar:opts.tellChar??2,tellFired:false,res,canvas:!!(G.room&&G.room.dlgSkin)};if(!D.canvas)dlg.classList.remove('hidden');who.textContent=speaker?speaker.toUpperCase():'';drawPortrait(false);});}
-function endDialog(){dlg.classList.add('hidden');const r=D.res;D=null;r();}
+function say(lines,speaker,opts={}){return new Promise(res=>{D={lines,i:0,shown:0,speaker,tellAt:opts.tellAt??-1,tellChar:opts.tellChar??2,tellFired:false,res};});}
+function endDialog(){const r=D.res;D=null;r();}
 function updateDialog(dt){if(!D)return;const line=D.lines[D.i];const prev=Math.floor(D.shown);D.shown=Math.min(line.length,D.shown+CFG.textSpeed*dt);const cur=Math.floor(D.shown);
  if(cur>prev&&cur-prev<4&&cur<line.length&&cur%2===0&&/[a-z0-9]/i.test(line[cur-1]||''))sfx('blip');   // soft per-letter typing blip (skipping punctuation & instant-skip)
- txt.textContent=line.slice(0,Math.floor(D.shown));
  if(D.i===D.tellAt&&!D.tellFired&&D.shown>D.tellChar){D.tellFired=true;if(CFG.tellDelayMs>0)setTimeout(()=>{if(D)fireTell();},CFG.tellDelayMs);else fireTell();}
- document.getElementById('more').style.visibility=D.shown>=line.length?'visible':'hidden';
  if(actPressed){actPressed=false;if(D.shown<line.length)D.shown=line.length;else{D.i++;D.shown=0;if(D.i>=D.lines.length)endDialog();}}}
 let tellVis=false,tellTimer=0;
 function fireTell(){const t=CFG.tellType;if(t==='none')return;const ms=(!G.tellSeen&&CFG.firstTellMs>0)?Math.max(CFG.firstTellMs,CFG.tellMs):CFG.tellMs;G.tellSeen=true;log(`tell fired: ${t} (${ms}ms${ms!==CFG.tellMs?' · first-tell teach':''})`,'lie',true);rec('tell',{tellType:t,ms});tellVis=true;tellTimer=ms/1000;
- if(t==='textglitch'){txt.classList.remove('glitch');void txt.offsetWidth;txt.classList.add('glitch');}
- if(t==='candle'){G.candleFlicker=ms/1000;}
- drawPortrait(true);}
-function drawPortrait(wrong){const p=pc;p.setTransform(2,0,0,2,0,0);p.imageSmoothingEnabled=false;p.fillStyle=CFG.cPlum;p.fillRect(0,0,32,32);
- if(!D)return;const sp=D.speaker;
- if(sp==='bunny'){const face=wrong&&(CFG.tellType==='faceflip'||CFG.tellType==='redpixel');
-  p.fillStyle=CFG.cPale;p.fillRect(9,2,4,12);p.fillRect(19,2,4,12);p.fillRect(7,13,18,15);
-  p.fillStyle=CFG.cLilac;p.fillRect(10,4,2,8);p.fillRect(20,4,2,8);p.fillRect(13,25,6,3);
-  if(face&&CFG.tellType==='faceflip'){p.fillStyle=CFG.cInk;p.fillRect(10,17,4,4);p.fillRect(18,17,4,4);p.fillStyle=CFG.cRed;p.fillRect(11,18,2,2);p.fillRect(19,18,2,2);p.fillStyle=CFG.cInk;for(let x=9;x<23;x++)p.fillRect(x,23+(x%2),1,1);p.fillRect(9,22,14,1);}
-  else if(face&&CFG.tellType==='redpixel'){p.fillStyle=CFG.cInk;p.fillRect(11,18,2,2);p.fillRect(19,18,2,2);p.fillStyle=CFG.cRed;p.fillRect(12,18,1,1);p.fillRect(20,18,1,1);p.fillStyle=CFG.cInk;p.fillRect(14,23,4,1);}
-  else{p.fillStyle=CFG.cInk;p.fillRect(11,18,2,2);p.fillRect(19,18,2,2);p.fillRect(14,23,4,1);}}
- else if(sp==='girl'){p.fillStyle=CFG.cInk;p.fillRect(8,3,16,14);p.fillStyle=CFG.cPale;p.fillRect(10,8,12,12);p.fillStyle=CFG.cInk;p.fillRect(12,12,2,2);p.fillRect(18,12,2,2);p.fillStyle=CFG.cLilac;p.fillRect(14,16,4,1);p.fillStyle=CFG.cPale;p.fillRect(8,20,16,12);
-  if(wrong&&(CFG.tellType==='faceflip'||CFG.tellType==='redpixel')){p.fillStyle=CFG.cRed;p.fillRect(12,12,2,2);p.fillRect(18,12,2,2);if(CFG.tellType==='faceflip'){p.fillStyle=CFG.cInk;p.fillRect(11,16,10,2);}}}
- else{p.fillStyle=CFG.cLilac;p.fillRect(6,6,20,20);p.fillStyle=CFG.cPale;p.fillRect(8,9,16,2);p.fillRect(8,13,12,2);p.fillRect(8,17,14,2);if(wrong&&CFG.tellType!=='none'){p.fillStyle=CFG.cRed;p.fillRect(8,21,10,2);}}}
+ if(t==='candle'){G.candleFlicker=ms/1000;}}
 
 /* ---------- GAME STATE ---------- */
 const W=320,H=180;const ctx=cv.getContext('2d');ctx.imageSmoothingEnabled=false;
@@ -768,7 +737,7 @@ mkRoom('endcard',(o)=>{const r={spawn:{x:-99,y:-99},endcard:true,nochar:true,qui
   if(Math.floor(performance.now()/600)%2){ctx.fillStyle=CFG.cPale;ctx.fillText('PRESS SPACE TO PLAY AGAIN',W/2,146);}
   ctx.textAlign='left';};return r;});
 
-mkRoom('teaparty',()=>{const r={spawn:{x:31,y:121},bounds:{x0:8,x1:312,y0:82,y1:176},dlgSkin:true,skippable:true,bigChar:true,floor:0,rule:'TEACH SAFELY. Talk to Vivi: she claims which cup is sweet. Any cup → basement.'};
+mkRoom('teaparty',()=>{const r={spawn:{x:31,y:121},bounds:{x0:8,x1:312,y0:82,y1:176},skippable:true,bigChar:true,floor:0,rule:'TEACH SAFELY. Talk to Vivi: she claims which cup is sweet. Any cup → basement.'};
  /* follow: the id of the deco art this hotspot belongs to — the editor moves them together */
  r.items=[{id:'girlA',follow:'vivi',x:123,y:68,w:12,h:16,reach:26,hidden:true,label:'VIVI',kind:'npc',async use(){if(r.claim)return;r.claim=rollClaim('teaparty','girl',['left','right'],s=>`Oh you came! Drink up — the ${s} cup is the sweet one. Promise.`,CFG.lie0,CFG.tell0);
    /* flow doc: the face flips ON the word "promise" — the safe lesson of the whole game */
@@ -878,7 +847,7 @@ mkRoom('ending',()=>{const r={spawn:{x:155,y:140},rule:'ENDING. 3 torn notes →
 /* ---------- UPDATE ---------- */
 let last=performance.now();
 function loop(now){const dt=Math.min(0.05,(now-last)/1000)*CFG.timeScale;last=now;update(dt);draw();requestAnimationFrame(loop);}
-function update(dt){if(tellVis){tellTimer-=dt;if(tellTimer<=0){tellVis=false;drawPortrait(false);}}
+function update(dt){if(tellVis){tellTimer-=dt;if(tellTimer<=0){tellVis=false;}}
  if(G.scare>0)G.scare-=dt;if(G.candleFlicker>0)G.candleFlicker-=dt;if(G.glow>0)G.glow-=dt;
  for(const f of G.fx)f.t+=dt;G.fx=G.fx.filter(f=>f.t<f.dur);
  if(G.fade<0){G.fade+=dt*3;if(G.fade>0)G.fade=0;}
@@ -993,21 +962,24 @@ function draw(){rect(0,0,W,H,CFG.cInk);const room=G.room;if(!room)return;room.dr
  if(G.atk.t>0){const hb=hitbox();rect(hb.x,hb.y,hb.w,hb.h,CFG.cPale);}
  if(G.glow>0){ctx.fillStyle=CFG.cPale;ctx.globalAlpha=Math.min(0.16,G.glow*0.32);ctx.fillRect(0,0,W,H);ctx.globalAlpha=1;}
  if(G.scare>0){ctx.fillStyle=CFG.cRed;ctx.globalAlpha=Math.min(0.6,G.scare);ctx.fillRect(0,0,W,H);ctx.globalAlpha=1;ctx.fillStyle=CFG.cInk;for(let i=0;i<12;i++){const x=Math.floor(Math.random()*W),y=Math.floor(Math.random()*H);ctx.fillRect(x,y,3,3);}}
- if(D&&D.canvas)drawTeaDialog();
+ if(D)drawDialog();
  if(CFG.mode==='designer')drawEd(room);
  if(G.fade){ctx.fillStyle=CFG.cInk;ctx.globalAlpha=Math.abs(G.fade);ctx.fillRect(0,0,W,H);ctx.globalAlpha=1;}}
-/* in-canvas dialog for the tea party — the friends' Figma text boxes (288x47 @ 16,125), portrait in the slot, same typing engine */
-const TEAPORT={vivi:{k:'portraitVivi',ox:0,oy:2},mara:{k:'portraitMara',ox:0,oy:3},bunny:{k:'portraitBunny',ox:7,oy:9}};
-function drawTeaDialog(){const bx=16,by=125,box=ART.teaBox;
+/* in-canvas dialog, every room — the friends' Figma text boxes (288x47 @ 16,125), portrait in the slot, same typing engine.
+   Portraits are the Figma Page 1 frames: vivi=enemy1, mara=enemy2, bunny=bunnydoll; anyone else (narrator, notes) = the hero. */
+const DLGPORT={vivi:{k:'portraitVivi',ox:0,oy:2},mara:{k:'portraitMara',ox:0,oy:3},bunny:{k:'portraitBunny',ox:7,oy:9}};
+function drawDialog(){const bx=16,by=125,box=ART.teaBox;
  if(box&&box.naturalWidth)ctx.drawImage(box,bx,by);else rect(bx,by,288,47,'#c2839a');
- const pm=TEAPORT[D.speaker]||{k:'portraitHero',ox:6,oy:10};const im=ART[pm.k];
+ const pm=DLGPORT[D.speaker]||{k:'portraitHero',ox:6,oy:10};const im=ART[pm.k];
+ const faceTell=tellVis&&(CFG.tellType==='faceflip'||CFG.tellType==='redpixel');
  if(im&&im.naturalWidth){const px=bx+pm.ox,py=by+pm.oy;
-  if(tellVis){ctx.save();ctx.translate(px+im.naturalWidth,py);ctx.scale(-1,1);ctx.drawImage(im,0,0);ctx.globalAlpha=0.3;ctx.fillStyle=CFG.cRed;ctx.fillRect(0,0,im.naturalWidth,im.naturalHeight);ctx.restore();}   // the tell: her face flips (mirrored + red wash)
+  if(faceTell){ctx.save();ctx.translate(px+im.naturalWidth,py);ctx.scale(-1,1);ctx.drawImage(im,0,0);ctx.globalAlpha=0.3;ctx.fillStyle=CFG.cRed;ctx.fillRect(0,0,im.naturalWidth,im.naturalHeight);ctx.restore();}   // the tell: her face flips (mirrored + red wash)
   else ctx.drawImage(im,px,py);}
  const line=D.lines[D.i]||'';const shown=line.slice(0,Math.floor(D.shown));
- ctx.font="8px 'Silkscreen',monospace";ctx.textAlign='left';ctx.fillStyle='#2a161d';
+ const gl=tellVis&&CFG.tellType==='textglitch';   // textglitch tell: the words shiver + bleed red instead of the face
+ ctx.font="8px 'Silkscreen',monospace";ctx.textAlign='left';ctx.fillStyle=gl?CFG.cRed:'#2a161d';
  const x0=bx+62,x1=bx+282,lh=11;let wx=x0,wy=by+15;
- for(const w of shown.split(' ')){const ww=ctx.measureText(w+' ').width;if(wx+ww>x1&&wx>x0){wx=x0;wy+=lh;}if(wy>by+44)break;ctx.fillText(w,wx,wy);wx+=ww;}
+ for(const w of shown.split(' ')){const ww=ctx.measureText(w+' ').width;if(wx+ww>x1&&wx>x0){wx=x0;wy+=lh;}if(wy>by+44)break;ctx.fillText(w,wx+(gl?(Math.random()*2|0)-1:0),wy+(gl?(Math.random()*2|0):0));wx+=ww;}
  if(D.shown>=line.length&&Math.floor(performance.now()/450)%2)ctx.fillText('▼',bx+272,by+43);
  ctx.textAlign='left';}
 /* editor overlay: selection outline + handles, the selected object's interact radius, optional all-hitboxes layer */

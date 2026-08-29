@@ -501,14 +501,14 @@ test('interact picks the nearest hot item — standing at the cup drinks the cup
   await waitRoom(page, 'floor1'); // drinking the cup sends you to the basement — Vivi's greeting would not
 });
 
-test('tea party dialog uses the in-canvas Figma box; floors keep the DOM dialog', async ({ page }) => {
+test('every dialog renders in-canvas with the Figma box — the DOM textbox is gone', async ({ page }) => {
   await page.goto(url + '?seed=1&room=teaparty');
   await waitRoom(page, 'teaparty');
   await page.waitForFunction(() => BB.dialogOpen());
-  expect(await page.locator('#dlg').getAttribute('class')).toContain('hidden'); // DOM box stays hidden
+  expect(await page.locator('#dlg').count()).toBe(0); // no DOM dialog container anywhere
   await skip(page);
   await page.goto(url + '?seed=1&skipIntro=1');
   await waitRoom(page, 'floor1');
-  await page.waitForFunction(() => BB.dialogOpen());
-  expect(await page.locator('#dlg').getAttribute('class')).not.toContain('hidden'); // classic dialog elsewhere
+  await page.waitForFunction(() => BB.dialogOpen()); // floors speak through the same in-canvas box
+  expect(await page.locator('#dlg').count()).toBe(0);
 });
