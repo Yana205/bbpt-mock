@@ -286,9 +286,9 @@ test('layout editor: dragging a prop in designer mode persists across reload', a
   const box = await page.locator('#game').boundingBox();
   const s = box.width / 320;
   const before = await page.evaluate(() => BB.state.room.deco.at(-1).x); // the plush
-  await page.mouse.move(box.x + (before + 22) * s, box.y + 94 * s);
+  await page.mouse.move(box.x + (before + 10) * s, box.y + 105 * s);
   await page.mouse.down();
-  await page.mouse.move(box.x + (before - 40) * s, box.y + 94 * s, { steps: 4 });
+  await page.mouse.move(box.x + (before - 40) * s, box.y + 105 * s, { steps: 4 });
   await page.mouse.up();
   const after = await page.evaluate(() => BB.state.room.deco.at(-1).x);
   expect(after).toBeLessThan(before);
@@ -319,17 +319,17 @@ test('editor v2: selecting art shows the inspector, moving it carries its hotspo
   await page.goto(url + '?seed=1&room=teaparty&mode=designer');
   await waitRoom(page, 'teaparty');
   await skip(page);
-  const ok = await page.evaluate(() => BB.editor.select('deco', 'girl'));
+  const ok = await page.evaluate(() => BB.editor.select('deco', 'vivi'));
   expect(ok).toBe(true);
   expect(await page.locator('#insWin').getAttribute('class')).not.toContain('hidden');
   expect(await page.locator('#insBody').textContent()).toContain('girlA'); // "carries hotspots: girlA"
   const before = await page.evaluate(() => {
-    const g = BB.state.room.deco.find(d => d._id === 'girl'), a = BB.state.room.items.find(i => i.id === 'girlA');
+    const g = BB.state.room.deco.find(d => d._id === 'vivi'), a = BB.state.room.items.find(i => i.id === 'girlA');
     return { gx: g.x, gy: g.y, ax: a.x, ay: a.y };
   });
   await page.evaluate(b => BB.editor.move(b.gx + 10, b.gy - 5), before);
   const after = await page.evaluate(() => {
-    const g = BB.state.room.deco.find(d => d._id === 'girl'), a = BB.state.room.items.find(i => i.id === 'girlA');
+    const g = BB.state.room.deco.find(d => d._id === 'vivi'), a = BB.state.room.items.find(i => i.id === 'girlA');
     return { gx: g.x, gy: g.y, ax: a.x, ay: a.y };
   });
   expect(after.gx).toBe(before.gx + 10);
@@ -339,7 +339,7 @@ test('editor v2: selecting art shows the inspector, moving it carries its hotspo
   expect(lay.teaparty.items.girlA.x).toBe(after.ax); // persisted
   await page.evaluate(() => BB.editor.undo());
   const undone = await page.evaluate(() => {
-    const g = BB.state.room.deco.find(d => d._id === 'girl'), a = BB.state.room.items.find(i => i.id === 'girlA');
+    const g = BB.state.room.deco.find(d => d._id === 'vivi'), a = BB.state.room.items.find(i => i.id === 'girlA');
     return { gx: g.x, ax: a.x };
   });
   expect(undone.gx).toBe(before.gx);
