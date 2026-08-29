@@ -240,7 +240,7 @@ test('key pickup: soft fx spawns, HUD swaps the em-dash for the pixel key', asyn
   expect(await page.evaluate(() => BB.fxCount())).toBeGreaterThan(0);   // floating key
   expect(await page.evaluate(() => BB.state.glow > 0)).toBe(true);      // pale glow, not red scare
   expect(await page.evaluate(() => BB.state.scare > 0)).toBe(false);
-  expect(await page.locator('#hudKey canvas').count()).toBe(1);         // pixel icon, no emoji
+  expect(await page.locator('#hudKey').isVisible()).toBe(true);         // key stamp appears only once held
 });
 
 test('floor 1 wears the Figma bedroom: beds + plush deco, standing Boo, hidden pillow hotspots', async ({ page }) => {
@@ -263,9 +263,7 @@ test('ignoring Boo can earn the disappointed face on its next line', async ({ pa
   const truth = await page.evaluate(() => BB.roomClaim().truth); // lie1=1: Boo names the other pillow
   const pos = { left: [67, 84], right: [244, 84] };
   await useAt(page, ...pos[truth]); // doubt the claim, correctly → followed=false → Boo sulks
-  await page.waitForFunction(() => BB.dialogOpen());
-  await skip(page); // "A small brass key..." (narrator)
-  await page.waitForFunction(() => BB.dialogInfo() && BB.dialogInfo().speaker === 'bunny');
+  await page.waitForFunction(() => BB.dialogOpen() && BB.dialogInfo().speaker === 'bunny'); // narrator key line is gone: the keyFx + HUD stamp are the cue
   expect(await page.evaluate(() => BB.dialogInfo().mood)).toBe('sad'); // seed 3: first sulk roll 0.288 < 0.6 — deterministic
 });
 
@@ -337,8 +335,8 @@ test('audio: music follows the room (music box up top, drone in the house), M to
   await page.keyboard.press('m');
   await page.waitForFunction(() => !BB.audio.on());
   expect(await page.evaluate(() => BB.audio.track())).toBe(null);
-  expect(await page.locator('#bMusicT').textContent()).toBe('♫ OFF');
-  expect(await page.locator('#bSfxT').textContent()).toBe('SFX OFF');
+  expect(await page.locator('#bMusicT.on').count()).toBe(0);
+  expect(await page.locator('#bSfxT.on').count()).toBe(0);
 });
 
 test('audio: ♫ and SFX toggle independently, M mutes and restores both', async ({ page }) => {
@@ -349,8 +347,8 @@ test('audio: ♫ and SFX toggle independently, M mutes and restores both', async
   await page.click('#bMusicT');
   await page.waitForFunction(() => BB.audio.track() === null);
   expect(await page.evaluate(() => BB.audio.sfxOn())).toBe(true);
-  expect(await page.locator('#bMusicT').textContent()).toBe('♫ OFF');
-  expect(await page.locator('#bSfxT').textContent()).toBe('SFX ON');
+  expect(await page.locator('#bMusicT.on').count()).toBe(0);
+  expect(await page.locator('#bSfxT.on').count()).toBe(1);
   // sfx off alone
   await page.click('#bSfxT');
   expect(await page.evaluate(() => BB.audio.sfxOn())).toBe(false);
@@ -621,4 +619,35 @@ test('HUD health bar: Figma bunny bar shows instead of hearts and drops a bunny 
   await page.waitForFunction(() => BB.state.petals === 2);
   expect(await bar.getAttribute('src')).not.toBe(full); // 2/3 state swapped in
   expect(await bar.isHidden()).toBe(false);
+});
+
+test('floor 3 dressing: mirror-set deco, wordless mirror reveal, no key stamp until held', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await page.goto(url + '?seed=2&room=floor3&mode=designer');
+  await waitRoom(page, 'floor3');
+  await skip(page);
+  expect(await page.locator('#hudKey').isHidden()).toBe(true);   // no empty KEY slot, no room name — icons only
+  const deco = await page.evaluate(() => BB.state.room.deco.map(d => d.k));
+  expect(deco).toEqual(expect.arrayContaining(['stairsArt', 'painting1', 'painting2', 'painting3']));
+  await useAt(page, 70, 90);   // stand right up against the glass
+  await page.waitForFunction(() => BB.dialogOpen());
+  expect((await page.evaluate(() => BB.dialogInfo())).speaker).toBe('mirror');   // the reveal is visual: ears portrait, no caption
+  await skip(page);
+  expect(errors).toEqual([]);
+});
+
+test('horror player: walking all four directions renders without errors', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await page.goto(url + '?seed=1&room=floor1&mode=designer');
+  await waitRoom(page, 'floor1');
+  await skip(page);
+  for (const k of ['KeyD', 'KeyA', 'KeyW', 'KeyS']) {
+    await page.evaluate(c => BB.hold(c, true), k);
+    await page.waitForTimeout(180);
+    await page.evaluate(c => BB.hold(c, false), k);
+  }
+  await page.waitForTimeout(150);   // idle facing down = heroIdle pose
+  expect(errors).toEqual([]);
 });
