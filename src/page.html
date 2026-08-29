@@ -233,7 +233,6 @@ canvas{width:960px;max-width:100%;aspect-ratio:16/9;image-rendering:pixelated;im
   </details>
   <details><summary>Characters &amp; sprites</summary>
     <p class="hint">Uploads live in this browser only — instant experiments. To bake one in: save the PNG into <b>art/runtime/</b> under that name and run <b>npm run assets</b>.</p>
-    <div class="row"><label>Tea party art scale</label><input type="range" data-cfg="teaScale" min="0.25" max="1" step="0.05"></div>
     <div class="row"><label>Same girl in floors 1–3 (purple)</label><input type="checkbox" data-cfg="sprChar"></div>
     <div class="filerow"><label>charRef — the girl (tea party + house)</label><input type="file" accept="image/png" data-spr="charRef"></div>
     <div class="filerow"><label>player — horror-floor sprite (used as-is)</label><input type="file" accept="image/png" data-spr="player"></div>
@@ -328,7 +327,7 @@ const DEF={mode:'playtest',seed:1,timeScale:1,skipIntro:false,release:false,
  petals:3,punishDolls:2,scareMs:600,
  combat:true,dolls:3,dollSpeed:28,dollHp:1,atkReach:14,atkActive:120,atkCd:380,knock:18,hurtCd:900,flee:'free',
  speed:60,reach:14,textSpeed:40,
- teaScale:1,sprChar:true,
+ sprChar:true,
  titleText:'BUNNY BOO',titleSub:'a welcome tea party for the new girl',titleFont:'Silkscreen',titleSize:26,titleColor:'#e0aab8',titleSubColor:'#c2839a',titleY:62,subY:80,bunnyX:138,bunnyY:86,endTagline:'the torn notes remember more than you do',
  cInk:'#0e0a14',cPlum:'#241a3a',cMid:'#4a3a6b',cLilac:'#9a86c4',cPale:'#d9cfee',cRed:'#c8262e'};
 let CFG={...DEF};
@@ -340,7 +339,7 @@ for(const [k,v] of URLP){if(k==='room'){urlRoom=v;continue;}if(!(k in DEF))conti
 const inputs=[...document.querySelectorAll('[data-cfg]')];
 function syncInputs(){inputs.forEach(i=>{const k=i.dataset.cfg;if(i.type==='checkbox')i.checked=!!CFG[k];else i.value=CFG[k];});applyMode();if(typeof syncScenario==='function')syncScenario();if(typeof ruleLine==='function')ruleLine();}
 function saveCfg(){try{const o={...CFG};delete o.release;localStorage.setItem('bb.cfg3',JSON.stringify(o));}catch(e){}}
-inputs.forEach(i=>i.addEventListener('input',()=>{const k=i.dataset.cfg;CFG[k]=i.type==='checkbox'?i.checked:((i.type==='number'||i.type==='range')?parseFloat(i.value):i.value);saveCfg();if(k==='mode')applyMode();if(/^(lie|tell|wrong|note2|falseTell|tellDelayMs|combat|worldTells)/.test(k)&&CFG.scenario!=='custom'){CFG.scenario='custom';saveCfg();syncScenario();}ruleLine();if(k==='petals'){G.petals=Math.min(G.petals,CFG.petals);hud();}if(k==='musVol'&&MUS.el)MUS.el.volume=musVolFor(MUS.track);if(k==='teaScale'&&G.room&&G.room.name==='teaparty')goto('teaparty');}));
+inputs.forEach(i=>i.addEventListener('input',()=>{const k=i.dataset.cfg;CFG[k]=i.type==='checkbox'?i.checked:((i.type==='number'||i.type==='range')?parseFloat(i.value):i.value);saveCfg();if(k==='mode')applyMode();if(/^(lie|tell|wrong|note2|falseTell|tellDelayMs|combat|worldTells)/.test(k)&&CFG.scenario!=='custom'){CFG.scenario='custom';saveCfg();syncScenario();}ruleLine();if(k==='petals'){G.petals=Math.min(G.petals,CFG.petals);hud();}if(k==='musVol'&&MUS.el)MUS.el.volume=musVolFor(MUS.track);}));
 const app=document.getElementById('app');
 /* PROD = session-only production preview: the release view (no testbed chrome), with a discreet exit the real itch build never has */
 let PROD=false,prodBack='designer';
@@ -560,7 +559,9 @@ function mkRoom(name,build){R[name]={name,build};}
 function goto(name,opts={}){if(G.busy)return;if(D)endDialog();G.busy=true;G.fade=1;G.fx=[];setTimeout(()=>{const r=R[name];G.dolls=[];const b=r.build(opts);b.name=name;b.items=b.items||[];b.doors=b.doors||[];b.claim=b.claim||null;applyLayout(b);G.room=b;G.player.x=G.room.spawn?.x??160;G.player.y=G.room.spawn?.y??140;G.player.hurt=0;roomSel.value=name;syncTabs();hud();log(`enter ${name}`,'sys');rec('enter',{room:name});flowReset();flow(0,name,'on');ruleLine();if(CFG.mode==='designer'){ED.sel=null;selSync();if(b.cardEls)document.getElementById('insWin').classList.remove('hidden');}G.busy=false;G.fade=-1;musicSync();if(!b.quiet)sfx('door');if(G.room.onEnter)G.room.onEnter();},250);}
 
 /* ---------- LAYOUT EDITOR v2 (EDIT mode: click = select + inspector, drag = move; hotspots with `follow` travel with their art; saved per room) ---------- */
-let LAY={};try{const s=localStorage.getItem('bb.layout2');if(s)LAY=JSON.parse(s);}catch(e){}
+let LAY={};try{const s=localStorage.getItem('bb.layout2');if(s)LAY=JSON.parse(s);
+ // one-time purge: tea-party layouts saved before the Figma room (2026-08-29) reference retired deco ids and would drag the new art/hotspots out of place
+ const t=LAY.teaparty;if(t&&t.deco&&['girl','table','chairBack','bow','bunny'].some(k=>t.deco[k])){delete LAY.teaparty;saveLay();}}catch(e){}
 function saveLay(){try{localStorage.setItem('bb.layout2',JSON.stringify(LAY));}catch(e){}}
 const ED={sel:null,snap:false,hit:false,undo:[],testFlip:false,fx:null,fy:null};
 function layRoom(){return LAY[G.room.name]=LAY[G.room.name]||{};}
@@ -671,7 +672,7 @@ document.getElementById('bHitbox').onclick=e=>{ED.hit=!ED.hit;e.target.classList
 document.getElementById('bUndoE').onclick=()=>undoEdit();
 function edTestFlip(){if(PROD){exitProd();return;}if(CFG.mode==='designer')enterProd();}
 document.getElementById('cLayCopy').onclick=()=>{const r=G.room;if(!r)return;
- const out={room:r.name,...(r.bigChar?{teaScale:CFG.teaScale}:{}),...(roomMusicMap()[r.name]?{music:roomMusicMap()[r.name]}:{}),
+ const out={room:r.name,...(roomMusicMap()[r.name]?{music:roomMusicMap()[r.name]}:{}),
   deco:r.deco?r.deco.map(({k,x,y,flip,dress,s})=>({k,x,y,...(flip?{flip:1}:{}),...(dress?{dress}:{}),...(s&&s!==1?{s}:{})})):undefined,
   items:Object.fromEntries((r.items||[]).map(i=>[i.id,{x:i.x,y:i.y,w:i.w,h:i.h,...(i.reach!=null?{reach:i.reach}:{}),...(i.label?{label:i.label}:{})}])),
   doors:Object.fromEntries((r.doors||[]).map(d=>[d.id,{x:d.x,y:d.y,...(d.reach!=null?{reach:d.reach}:{}),...(d.label?{label:d.label}:{})}]))};
@@ -775,12 +776,7 @@ mkRoom('teaparty',()=>{const r={spawn:{x:31,y:121},skippable:true,bigChar:true,f
   {k:'teapot',x:130,y:68},
   {k:'teaWall',x:0,y:0},
   {k:'bunnySmall',x:284,y:76}];
- /* the friends' art is drawn on a 64px grid — far bigger than the 320×180 world. teaScale zooms the whole
-    composition (art, hotspots, spawn) about a floor-level pivot so proportions match the rest of the game. */
- const ts=Math.max(0.25,Math.min(1,CFG.teaScale||1));r.artScale=ts;
- if(ts!==1){const px=160,py=118,T=o=>{o.x=Math.round(px+(o.x-px)*ts);o.y=Math.round(py+(o.y-py)*ts);};
-  r.deco.forEach(T);r.items.forEach(o=>{T(o);o.w=Math.max(4,Math.round(o.w*ts));o.h=Math.max(4,Math.round(o.h*ts));});
-  r.spawn={x:Math.round(px+(r.spawn.x-px)*ts),y:Math.round(py+(r.spawn.y-py)*ts)};}
+ /* rendered strictly 1:1 — the Figma frame is natively 320×180, its proportions ARE the design (no scaling) */
  r.draw=()=>{rect(0,0,W,H,'#2a161d');rect(0,95,W,2,'#663a49');};   // friends' room bg: maroon walls+floor, floor line at y95 (pink-ramp exception)
  return r;});
 

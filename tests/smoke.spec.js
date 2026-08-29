@@ -375,24 +375,17 @@ test('music: per-room override beats the global pick and inherit falls back', as
   await page.waitForFunction(() => BB.audio.track() === null);
 });
 
-test('tea party proportions: teaScale shrinks art, hotspots and spawn together', async ({ page }) => {
-  await page.goto(url + '?seed=1&room=teaparty&teaScale=0.5');
+test('tea party is strictly 1:1 with the Figma frame — teaScale params/leftovers have no effect', async ({ page }) => {
+  await page.goto(url + '?seed=1&room=teaparty&teaScale=0.5'); // stale/URL teaScale must be ignored
   await waitRoom(page, 'teaparty');
-  const half = await page.evaluate(() => {
+  const r = await page.evaluate(() => {
     const a = BB.state.room.items.find(i => i.id === 'girlA');
-    return { scale: BB.state.room.artScale, w: a.w, x: a.x, spawn: BB.state.room.spawn.y };
+    const v = BB.state.room.deco.find(d => d._id === 'vivi');
+    return { ax: a.x, ay: a.y, vx: v.x, vy: v.y, spawn: BB.state.room.spawn };
   });
-  expect(half.scale).toBe(0.5);
-  expect(half.w).toBe(6); // 12 × 0.5
-  await page.goto(url + '?seed=1&room=teaparty&teaScale=1');
-  await waitRoom(page, 'teaparty');
-  const full = await page.evaluate(() => {
-    const a = BB.state.room.items.find(i => i.id === 'girlA');
-    return { scale: BB.state.room.artScale, w: a.w, x: a.x };
-  });
-  expect(full.scale).toBe(1);
-  expect(full.w).toBe(12);
-  expect(full.x).not.toBe(half.x); // positions zoom about the pivot too
+  expect([r.vx, r.vy]).toEqual([111, 30]);   // Figma frame coordinates, verbatim
+  expect([r.ax, r.ay]).toEqual([123, 68]);
+  expect(r.spawn).toEqual({ x: 31, y: 121 });
 });
 
 test('cards are config-driven: title text/color edits render without errors', async ({ page }) => {
