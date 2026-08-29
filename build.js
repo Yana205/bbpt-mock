@@ -13,6 +13,8 @@ if (process.argv[2] === 'itch') {
   fs.mkdirSync('dist/itch', { recursive: true });
   fs.writeFileSync('dist/itch/index.html', rel);
   const { execSync } = require('child_process');
-  execSync('cd dist/itch && zip -q ../bunny-boo-itch.zip index.html');
+  // -X: no macOS extended attributes; delete any stale zip first so entries never accumulate.
+  // itch needs index.html at the ROOT of the zip — never re-compress the folder in Finder (that nests itch/ + __MACOSX and itch fails with "Failed to find index.html").
+  execSync('rm -f dist/bunny-boo-itch.zip && cd dist/itch && zip -q -X ../bunny-boo-itch.zip index.html');
   console.log('built dist/bunny-boo-itch.zip (upload to itch.io as HTML5, viewport 960×720)');
 }
