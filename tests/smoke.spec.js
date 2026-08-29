@@ -314,3 +314,107 @@ test('top bar: room tabs switch rooms, PLAY/EDIT toggles the rail', async ({ pag
   await page.click('#mEdit');
   expect(await page.locator('#app').getAttribute('class')).not.toContain('norail');
 });
+
+test('editor v2: selecting art shows the inspector, moving it carries its hotspot, undo restores both', async ({ page }) => {
+  await page.goto(url + '?seed=1&room=teaparty&mode=designer');
+  await waitRoom(page, 'teaparty');
+  await skip(page);
+  const ok = await page.evaluate(() => BB.editor.select('deco', 'girl'));
+  expect(ok).toBe(true);
+  expect(await page.locator('#insWin').getAttribute('class')).not.toContain('hidden');
+  expect(await page.locator('#insBody').textContent()).toContain('girlA'); // "carries hotspots: girlA"
+  const before = await page.evaluate(() => {
+    const g = BB.state.room.deco.find(d => d._id === 'girl'), a = BB.state.room.items.find(i => i.id === 'girlA');
+    return { gx: g.x, gy: g.y, ax: a.x, ay: a.y };
+  });
+  await page.evaluate(b => BB.editor.move(b.gx + 10, b.gy - 5), before);
+  const after = await page.evaluate(() => {
+    const g = BB.state.room.deco.find(d => d._id === 'girl'), a = BB.state.room.items.find(i => i.id === 'girlA');
+    return { gx: g.x, gy: g.y, ax: a.x, ay: a.y };
+  });
+  expect(after.gx).toBe(before.gx + 10);
+  expect(after.ax).toBe(before.ax + 10);   // hotspot travelled with the art
+  expect(after.ay).toBe(before.ay - 5);
+  const lay = await page.evaluate(() => BB.editor.layout());
+  expect(lay.teaparty.items.girlA.x).toBe(after.ax); // persisted
+  await page.evaluate(() => BB.editor.undo());
+  const undone = await page.evaluate(() => {
+    const g = BB.state.room.deco.find(d => d._id === 'girl'), a = BB.state.room.items.find(i => i.id === 'girlA');
+    return { gx: g.x, ax: a.x };
+  });
+  expect(undone.gx).toBe(before.gx);
+  expect(undone.ax).toBe(before.ax);
+});
+
+test('editor v2: per-item interact radius override changes what the player can reach', async ({ page }) => {
+  await page.goto(url + '?seed=3&skipIntro=1&lie1=1');
+  await waitRoom(page, 'floor1');
+  await skip(page);
+  // stand well outside the default radius (reach 14 + 8 = 22 from the pillow centre)
+  const far = await page.evaluate(() => {
+    const it = BB.state.room.items.find(i => i.id === 'left');
+    BB.teleport(it.x + it.w / 2 + 35 - 5, it.y + it.h / 2 - 7); BB.press('KeyZ');
+    return BB.dialogOpen();
+  });
+  await page.waitForTimeout(80);
+  expect(await page.evaluate(() => BB.dialogOpen())).toBe(false);
+  await page.evaluate(() => { BB.state.room.items.find(i => i.id === 'left').reach = 40; BB.press('KeyZ'); });
+  await page.waitForFunction(() => BB.dialogOpen()); // now in range: the pillow answers
+});
+
+test('music: per-room override beats the global pick and inherit falls back', async ({ page }) => {
+  await page.goto(url + '?seed=1&skipIntro=1&sound=1');
+  await waitRoom(page, 'floor1');
+  await page.keyboard.press('a'); // gesture unlocks audio
+  await page.waitForFunction(() => BB.audio.track() === 'drone');
+  await page.evaluate(() => BB.music.set('floor1', 'musicbox'));
+  await page.waitForFunction(() => BB.audio.track() === 'musicbox');
+  await page.evaluate(() => BB.music.set('floor1', null));
+  await page.waitForFunction(() => BB.audio.track() === 'drone');
+  await page.evaluate(() => BB.music.set('floor1', 'off'));
+  await page.waitForFunction(() => BB.audio.track() === null);
+});
+
+test('tea party proportions: teaScale shrinks art, hotspots and spawn together', async ({ page }) => {
+  await page.goto(url + '?seed=1&room=teaparty&teaScale=0.5');
+  await waitRoom(page, 'teaparty');
+  const half = await page.evaluate(() => {
+    const a = BB.state.room.items.find(i => i.id === 'girlA');
+    return { scale: BB.state.room.artScale, w: a.w, x: a.x, spawn: BB.state.room.spawn.y };
+  });
+  expect(half.scale).toBe(0.5);
+  expect(half.w).toBe(6); // 12 × 0.5
+  await page.goto(url + '?seed=1&room=teaparty&teaScale=1');
+  await waitRoom(page, 'teaparty');
+  const full = await page.evaluate(() => {
+    const a = BB.state.room.items.find(i => i.id === 'girlA');
+    return { scale: BB.state.room.artScale, w: a.w, x: a.x };
+  });
+  expect(full.scale).toBe(1);
+  expect(full.w).toBe(12);
+  expect(full.x).not.toBe(half.x); // positions zoom about the pivot too
+});
+
+test('cards are config-driven: title text/color edits render without errors', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await page.goto(url + '?seed=1&titleText=HELLO%20BOO&titleColor=%239a86c4&titleFont=Atkinson%20Hyperlegible&mode=designer');
+  await waitRoom(page, 'title');
+  expect(await page.evaluate(() => BB.cfg.titleText)).toBe('HELLO BOO');
+  expect(await page.locator('[data-cfg="titleText"]').inputValue()).toBe('HELLO BOO');
+  await page.waitForTimeout(300); // let a few title frames draw with the custom font/color
+  expect(errors).toEqual([]);
+});
+
+test('horror floors: the purple-remapped charRef stands in for the rect player (and can be turned off)', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await page.goto(url + '?seed=1&skipIntro=1&sprChar=1');
+  await waitRoom(page, 'floor1');
+  await skip(page);
+  await page.waitForTimeout(200); // frames draw the remapped sprite
+  await page.goto(url + '?seed=1&skipIntro=1&sprChar=0');
+  await waitRoom(page, 'floor1');
+  await page.waitForTimeout(200);
+  expect(errors).toEqual([]);
+});
