@@ -82,6 +82,10 @@ canvas{width:960px;max-width:100%;aspect-ratio:16/9;image-rendering:pixelated;im
 .app.pt .tabs{visibility:hidden}
 /* release = what ships to itch: no testbed chrome at all */
 .app.rel .topbar,.app.rel #hudMode,.app.rel .devhelp{display:none}
+/* release: the game scales to fit the window — in the 960×720 itch iframe the canvas lands exactly 1:1 (960×540) */
+.app.rel .stage{min-height:100vh;justify-content:center;padding:10px 12px;gap:8px}
+.app.rel canvas,.app.rel .hud,.app.rel .help{width:min(960px,100%,calc((100vh - 84px)*16/9))}
+.app.rel .help{justify-content:center}
 #bMusicT{min-width:58px}#bSfxT{min-width:70px}
 #hudKey canvas{image-rendering:pixelated;vertical-align:-2px}
 #hudKey.pop{animation:keypop .45s steps(4)}
@@ -519,7 +523,8 @@ function fireTell(){const t=CFG.tellType;if(t==='none')return;const ms=(!G.tellS
  if(t==='candle'){G.candleFlicker=ms/1000;}}
 
 /* ---------- GAME STATE ---------- */
-const W=320,H=180;const ctx=cv.getContext('2d');ctx.imageSmoothingEnabled=false;
+const W=320,H=180,SS=3;   // SS: backing-store supersample — art still scales by an exact integer, but dialog text can rasterize at 16px Silkscreen (crisp 2× of its native 8) instead of a huge 24px-equivalent
+const ctx=cv.getContext('2d');ctx.imageSmoothingEnabled=false;
 const G={room:null,petals:CFG.petals,notes:new Set(),player:{x:160,y:120,w:10,h:14,dir:'down',face:'right',hurt:0},dolls:[],atk:{t:0,cd:0},scare:0,fade:0,candleFlicker:0,glow:0,fx:[],busy:false,returnTo:null,fromPunish:false,reveal:false,key:false,tellSeen:false};
 const R={};const order=['lab','teaparty','floor1','floor2','dollroom','floor3','ending'];
 const roomSel=document.getElementById('roomSel');const TABN={teaparty:'TEA PARTY',floor1:'FLOOR 1',floor2:'FLOOR 2',dollroom:'DOLLS',floor3:'FLOOR 3',ending:'ENDING',lab:'TELL LAB'};
@@ -736,7 +741,7 @@ mkRoom('endcard',(o)=>{const r={spawn:{x:-99,y:-99},endcard:true,nochar:true,qui
   box(){ctx.font=`8px '${CFG.titleFont}',monospace`;const w=Math.min(W,ctx.measureText(CFG.endTagline||' ').width||40);return{x:W/2-w/2,y:108,w,h:12};},
   get x(){return this.box().x;},set x(v){},get y(){return 116;},set y(v){}}];
  r.draw=()=>{rect(0,0,W,H,CFG.cInk);ctx.textAlign='center';const F=`'${CFG.titleFont}',monospace`;
-  ctx.font=`700 16px ${F}`;ctx.fillStyle=r.secret?CFG.titleColor:CFG.cLilac;ctx.fillText(r.secret?'— SECRET ENDING —':'— ENDING —',W/2,56);
+  ctx.font=`700 16px ${F}`;ctx.fillStyle=r.secret?CFG.titleColor:CFG.cLilac;ctx.fillText(r.secret?'SECRET ENDING':'ENDING',W/2,56);
   const s=summary();ctx.font=`8px ${F}`;ctx.fillStyle=CFG.cLilac;
   ctx.fillText(`notes found  ${G.notes.size} / 3`,W/2,86);
   if(s.claims)ctx.fillText(`claims right ${s.correct} / ${s.claims} · lies caught ${s.liesCaught} / ${s.lies}`,W/2,98);
@@ -746,7 +751,7 @@ mkRoom('endcard',(o)=>{const r={spawn:{x:-99,y:-99},endcard:true,nochar:true,qui
 
 mkRoom('teaparty',()=>{const r={spawn:{x:31,y:121},bounds:{x0:8,x1:312,y0:82,y1:176},skippable:true,bigChar:true,floor:0,rule:'TEACH SAFELY. Talk to Vivi: she claims which cup is sweet. Any cup → basement.'};
  /* follow: the id of the deco art this hotspot belongs to — the editor moves them together */
- r.items=[{id:'girlA',follow:'vivi',x:123,y:68,w:12,h:16,reach:26,hidden:true,label:'VIVI',kind:'npc',async use(){if(r.claim)return;r.claim=rollClaim('teaparty','girl',['left','right'],s=>`Oh you came! Drink up — the ${s} cup is the sweet one. Promise.`,CFG.lie0,CFG.tell0);
+ r.items=[{id:'girlA',follow:'vivi',x:123,y:68,w:12,h:16,reach:26,hidden:true,label:'VIVI',kind:'npc',async use(){if(r.claim)return;r.claim=rollClaim('teaparty','girl',['left','right'],s=>`Oh you came! Drink up. The ${s} cup is the sweet one. Promise.`,CFG.lie0,CFG.tell0);
    /* flow doc: the face flips ON the word "promise" — the safe lesson of the whole game */
    await say(['Vivi smiles with all her teeth.',r.claim.text],'vivi',{tellAt:r.claim.tell?1:-1,tellChar:Math.max(2,r.claim.text.indexOf('Promise'))});}},
   {id:'girlB',follow:'mara',x:256,y:98,w:12,h:16,hidden:true,label:'MARA',kind:'npc',async use(){await say(['Mara is looking at the bunny in the corner, not at you.','"...she said you can go home after."'],'mara');}},
@@ -792,7 +797,7 @@ mkRoom('floor1',()=>{ const r={spawn:{x:155,y:140},floor:1,rule:'TEACH THE BITE.
  r.onEnter=async()=>{const LINE=s=>`The key's under the ${s.toUpperCase()} pillow, I saw it, go look!`;
   if(G.fromPunish){G.fromPunish=false;r.claim=rollClaim('floor1','bunny',['left','right'],LINE,CFG.lie1,CFG.tell1);await say(['"Oops. Try again, then."',r.claim.text],'bunny',{tellAt:r.claim.tell?1:-1});return;}
   r.claim=rollClaim('floor1','bunny',['left','right'],LINE,CFG.lie1,CFG.tell1);
-  await say(['You wake on cold stone. Two small beds, names stitched into the blankets.','"Hi! Hi hi. You\'re the new one. Don\'t be scared — I\'ll get you out."',r.claim.text],'bunny',{tellAt:r.claim.tell?2:-1});};
+  await say(['You wake on cold stone. Two small beds, names stitched into the blankets.','"Hi! Hi hi. You\'re the new one. Don\'t be scared. I\'ll get you out."',r.claim.text],'bunny',{tellAt:r.claim.tell?2:-1});};
  r.draw=()=>{rect(40,20,240,140,CFG.cPlum);for(let x=44;x<276;x+=16)rect(x,156,8,2,CFG.cMid);
   label('EMMA',71,148,false,true);label('ROSE',248,148,false,true);};return r;});
 
@@ -838,7 +843,7 @@ mkRoom('dollroom',(o)=>{const r={spawn:{x:155,y:145},punish:!!o.punish,rule:CFG.
 
 mkRoom('floor3',()=>{const r={spawn:{x:155,y:145},floor:3,rule:'BETRAY. No tell on the face — the MIRROR wears the wrong one. Small door behind the mirror → out'};
  r.doors=[{id:'door',x:60,y:20,w:12,h:6,locked:false,to:'pick',label:'SMALL DOOR'},{id:'stairs',x:238,y:20,w:22,h:6,locked:false,to:'pick',label:'STAIRS'}];
- addNote(r,92,64,'...only one this year and it stays quiet until spring. — A.');addBunny(r,178,100,'stand','It is standing now. It was never this tall.');
+ addNote(r,92,64,'...only one this year and it stays quiet until spring. Yours, A.');addBunny(r,178,100,'stand','It is standing now. It was never this tall.');
  r.items.push({id:'mirror',x:64,y:54,w:18,h:28,label:'MIRROR',kind:'clue',async use(){await say(['In the mirror you are wearing ears.','You are not wearing ears.'],null);}});
  r.pick=async(side)=>{recDecision(side);if(side===r.claim.truth){log('correct → ending','ok');flowDecide(side,true,'→ ending');goto('ending');}else{flowDecide(side,false,(CFG['wrong3']==='doll'&&CFG.combat?'petal + doll room':CFG['wrong3']==='scare'?'scare only':'lose a petal'));if(!await wrongTrust(side==='stairs'?'It was never a stairway. The steps climb into the dark and set you back down here.':'The little door opens onto brick.',CFG.wrong3))await say(['"You\'re learning. I like that."'],'bunny');}};
  r.onEnter=async()=>{const LINE=s=>`${s==='stairs'?'The stairs go':'The little door goes'} home. I promise. I have never lied to you. Not once. You're my best friend.`;
@@ -851,7 +856,7 @@ mkRoom('floor3',()=>{const r={spawn:{x:155,y:145},floor:3,rule:'BETRAY. No tell 
   for(let i=0;i<4;i++)rect(238-i*4,28+i*5,22+i*8,4,CFG.cMid);};return r;});
 
 mkRoom('ending',()=>{const r={spawn:{x:155,y:140},rule:'ENDING. 3 torn notes → secret ending, else normal. Then run resets.'};r.onEnter=async()=>{const secret=G.notes.size>=3;const s=summary();log(`ENDING: ${secret?'SECRET':'NORMAL'} (notes ${G.notes.size}/3) · ${s.correct}/${s.claims} claims right`,'sys');rec('ending',{secret,notes:G.notes.size,...s});
- await say(secret?['The three scraps slide together into one invitation.','"...welcome tea for the new girl, Saturday...','...she won\'t be missed, her mother works nights...','...only one this year and it stays quiet until spring. — A."','School, the next day. Vivi and Mara at their table.','One empty chair.','A click.']:['Grey morning. The theater\'s back alley.','Behind you, soft and small:','"...come back soon?"'],null);goto('endcard',{secret});};
+ await say(secret?['The three scraps slide together into one invitation.','"...welcome tea for the new girl, Saturday...','...she won\'t be missed, her mother works nights...','...only one this year and it stays quiet until spring. Yours, A."','School, the next day. Vivi and Mara at their table.','One empty chair.','A click.']:['Grey morning. The theater\'s back alley.','Behind you, soft and small:','"...come back soon?"'],null);goto('endcard',{secret});};
  r.draw=()=>{rect(0,0,320,180,CFG.cPale);rect(140,40,40,100,CFG.cLilac);rect(150,20,20,20,CFG.cPale);ctx.font='8px monospace';ctx.fillStyle=CFG.cInk;ctx.textAlign='center';ctx.fillText('DAYLIGHT',160,160);ctx.textAlign='left';};return r;});
 
 /* ---------- UPDATE ---------- */
@@ -959,7 +964,7 @@ function drawItem(it,hot){const k=it.kind||'npc';
 function draw(){const room=G.room;
  /* card rooms may carry native-resolution art (natW/natH): swap the backing store so it blits 1:1 crisp,
     and scale the transform so every 320x180-space draw (fade, overlays) still covers the full canvas */
- const nw=(room&&room.natW)||W,nh=(room&&room.natH)||H;
+ const nw=(room&&room.natW)||W*SS,nh=(room&&room.natH)||H*SS;
  if(cv.width!==nw){cv.width=nw;cv.height=nh;ctx.imageSmoothingEnabled=false;}
  ctx.setTransform(nw/W,0,0,nh/H,0,0);
  rect(0,0,W,H,CFG.cInk);if(!room)return;room.draw&&room.draw();
@@ -1018,9 +1023,15 @@ function drawDialog(){const bx=16,by=125,hor=!G.room||G.room.name!=='teaparty';
  const line=D.lines[D.i]||'';const shown=line.slice(0,Math.floor(D.shown));
  const gl=tellVis&&CFG.tellType==='textglitch';   // textglitch tell: the words shiver + bleed red instead of the face
  const inkCol=hor?CFG.cPale:'#2a161d';
- ctx.font="8px 'Silkscreen',monospace";ctx.textAlign='left';ctx.fillStyle=gl?CFG.cRed:inkCol;
- const x0=bx+62,x1=bx+282,lh=11;let wx=x0,wy=by+15;
- for(const w of shown.split(' ')){const ww=ctx.measureText(w+' ').width;if(wx+ww>x1&&wx>x0){wx=x0;wy+=lh;}if(wy>by+44)break;ctx.fillText(w,wx+(gl?(Math.random()*2|0)-1:0),wy+(gl?(Math.random()*2|0):0));wx+=ww;}
+ /* text at backing-pixel resolution: 16px Silkscreen (2× its native 8 — crisp) ≈ 5.3 logical px, proportional to the box instead of shouting over it */
+ ctx.save();ctx.setTransform(1,0,0,1,0,0);
+ ctx.font="16px 'Silkscreen',monospace";ctx.textAlign='left';ctx.fillStyle=gl?CFG.cRed:inkCol;
+ const x0=(bx+62)*SS,x1=(bx+282)*SS,lh=24;
+ /* vertically center the block: count wrapped lines of the FULL text once (stable while typing) */
+ let nl=1,cx=x0;for(const w of line.split(' ')){const ww=ctx.measureText(w+' ').width;if(cx+ww>x1&&cx>x0){cx=x0;nl++;}cx+=ww;}
+ let wx=x0,wy=(by+26)*SS+6-Math.min(3,nl-1)*lh/2;
+ for(const w of shown.split(' ')){const ww=ctx.measureText(w+' ').width;if(wx+ww>x1&&wx>x0){wx=x0;wy+=lh;}if(wy>(by+44)*SS)break;ctx.fillText(w,wx+(gl?((Math.random()*2|0)-1)*SS:0),wy+(gl?(Math.random()*2|0)*SS:0));wx+=ww;}
+ ctx.restore();
  if(D.shown>=line.length&&Math.floor(performance.now()/450)%2){ctx.fillStyle=inkCol;for(let i=0;i<4;i++)ctx.fillRect(bx+272+i,by+38+i,7-2*i,1);}   // crisp pixel ▼ (font glyphs antialias)
  ctx.textAlign='left';}
 /* editor overlay: selection outline + handles, the selected object's interact radius, optional all-hitboxes layer */
