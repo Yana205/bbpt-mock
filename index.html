@@ -870,8 +870,9 @@ function update(dt){if(tellVis){tellTimer-=dt;if(tellTimer<=0){tellVis=false;dra
  if(room.title){if(actPressed){actPressed=false;sfx('start');rec('titleStart',{});resetRun();}return;}
  if(room.endcard){if(actPressed){actPressed=false;goto('title');}return;}
  let dx=0,dy=0;if(keys.ArrowLeft||keys.KeyA)dx=-1;if(keys.ArrowRight||keys.KeyD)dx=1;if(keys.ArrowUp||keys.KeyW)dy=-1;if(keys.ArrowDown||keys.KeyS)dy=1;
- if(dx&&dy){dy=0;} if(dx)p.dir=dx<0?'left':'right';if(dy)p.dir=dy<0?'up':'down';
- p.x=Math.max(42,Math.min(318-42-p.w,p.x+dx*CFG.speed*dt));p.y=Math.max(22,Math.min(158-p.h,p.y+dy*CFG.speed*dt));
+ const mv=dx&&dy?0.70710678:1;   // diagonals allowed, normalized (dy used to be zeroed — "can't go up while walking sideways")
+ if(dx)p.dir=dx<0?'left':'right';else if(dy)p.dir=dy<0?'up':'down';
+ p.x=Math.max(42,Math.min(318-42-p.w,p.x+dx*CFG.speed*dt*mv));p.y=Math.max(22,Math.min(158-p.h,p.y+dy*CFG.speed*dt*mv));
  if(p.hurt>0)p.hurt-=dt;
  if(G.atk.cd>0)G.atk.cd-=dt;if(G.atk.t>0)G.atk.t-=dt;
  if(atkPressed){atkPressed=false;if(!CFG.combat){log('X: combat is OFF in this scenario (Combat → enabled, or scenario "Combat on")','sys');}else if(G.atk.cd<=0){G.atk.cd=CFG.atkCd/1000;G.atk.t=CFG.atkActive/1000;}}

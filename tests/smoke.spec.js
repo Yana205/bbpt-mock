@@ -449,3 +449,16 @@ test('PROD mode: production preview shows the release view with a way back', asy
   await page.waitForFunction(() => !BB.prod.on());
   expect(await page.evaluate(() => BB.cfg.mode)).toBe('designer');
 });
+
+test('movement: diagonals work — W is not eaten while a horizontal key is held', async ({ page }) => {
+  await page.goto(url + '?seed=1&room=teaparty');
+  await waitRoom(page, 'teaparty');
+  await skip(page);
+  const before = await page.evaluate(() => ({ x: BB.state.player.x, y: BB.state.player.y }));
+  await page.evaluate(() => { BB.hold('KeyD', true); BB.hold('KeyW', true); });
+  await page.waitForTimeout(400);
+  await page.evaluate(() => { BB.hold('KeyD', false); BB.hold('KeyW', false); });
+  const after = await page.evaluate(() => ({ x: BB.state.player.x, y: BB.state.player.y }));
+  expect(after.x).toBeGreaterThan(before.x);
+  expect(after.y).toBeLessThan(before.y); // moved up while moving right
+});
