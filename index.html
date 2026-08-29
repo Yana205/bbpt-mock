@@ -510,10 +510,10 @@ cv.addEventListener('click',()=>cv.focus());
 /* ---------- DIALOG ---------- */
 const dlg=document.getElementById('dlg'),txt=document.getElementById('txt'),who=document.getElementById('who'),pc=document.getElementById('portrait').getContext('2d');
 let D=null;
-function say(lines,speaker,opts={}){return new Promise(res=>{D={lines,i:0,shown:0,speaker,tellAt:opts.tellAt??-1,tellFired:false,res};dlg.classList.remove('hidden');who.textContent=speaker?speaker.toUpperCase():'';drawPortrait(false);});}
+function say(lines,speaker,opts={}){return new Promise(res=>{D={lines,i:0,shown:0,speaker,tellAt:opts.tellAt??-1,tellChar:opts.tellChar??2,tellFired:false,res};dlg.classList.remove('hidden');who.textContent=speaker?speaker.toUpperCase():'';drawPortrait(false);});}
 function endDialog(){dlg.classList.add('hidden');const r=D.res;D=null;r();}
 function updateDialog(dt){if(!D)return;const line=D.lines[D.i];D.shown=Math.min(line.length,D.shown+CFG.textSpeed*dt);txt.textContent=line.slice(0,Math.floor(D.shown));
- if(D.i===D.tellAt&&!D.tellFired&&D.shown>2){D.tellFired=true;if(CFG.tellDelayMs>0)setTimeout(()=>{if(D)fireTell();},CFG.tellDelayMs);else fireTell();}
+ if(D.i===D.tellAt&&!D.tellFired&&D.shown>D.tellChar){D.tellFired=true;if(CFG.tellDelayMs>0)setTimeout(()=>{if(D)fireTell();},CFG.tellDelayMs);else fireTell();}
  document.getElementById('more').style.visibility=D.shown>=line.length?'visible':'hidden';
  if(actPressed){actPressed=false;if(D.shown<line.length)D.shown=line.length;else{D.i++;D.shown=0;if(D.i>=D.lines.length)endDialog();}}}
 let tellVis=false,tellTimer=0;
@@ -759,7 +759,9 @@ mkRoom('endcard',(o)=>{const r={spawn:{x:-99,y:-99},endcard:true,nochar:true,qui
 
 mkRoom('teaparty',()=>{const r={spawn:{x:31,y:121},skippable:true,bigChar:true,floor:0,rule:'TEACH SAFELY. Talk to Vivi: she claims which cup is sweet. Any cup → basement.'};
  /* follow: the id of the deco art this hotspot belongs to — the editor moves them together */
- r.items=[{id:'girlA',follow:'vivi',x:123,y:68,w:12,h:16,reach:26,hidden:true,label:'VIVI',kind:'npc',async use(){if(r.claim)return;r.claim=rollClaim('teaparty','girl',['left','right'],s=>`Oh you came! Drink up — the ${s} cup is the sweet one. Promise.`,CFG.lie0,CFG.tell0);await say(['Vivi smiles with all her teeth.',r.claim.text],'girl',{tellAt:r.claim.tell?1:-1});}},
+ r.items=[{id:'girlA',follow:'vivi',x:123,y:68,w:12,h:16,reach:26,hidden:true,label:'VIVI',kind:'npc',async use(){if(r.claim)return;r.claim=rollClaim('teaparty','girl',['left','right'],s=>`Oh you came! Drink up — the ${s} cup is the sweet one. Promise.`,CFG.lie0,CFG.tell0);
+   /* flow doc: the face flips ON the word "promise" — the safe lesson of the whole game */
+   await say(['Vivi smiles with all her teeth.',r.claim.text],'girl',{tellAt:r.claim.tell?1:-1,tellChar:Math.max(2,r.claim.text.indexOf('Promise'))});}},
   {id:'girlB',follow:'mara',x:256,y:98,w:12,h:16,hidden:true,label:'MARA',kind:'npc',async use(){await say(['Mara is looking at the bunny in the corner, not at you.','"...she said you can go home after."'],'girl');}},
   {id:'left',follow:'teacup',x:112,y:84,w:10,h:8,hidden:true,label:'CUP L',kind:'pick',use:()=>drink('left')},{id:'right',follow:'teacup#2',x:193,y:86,w:10,h:8,hidden:true,label:'CUP R',kind:'pick',use:()=>drink('right')},
   {id:'bunny',follow:'bunnySmall',x:286,y:82,w:14,h:18,reach:20,hidden:true,label:'BUNNY',kind:'npc',async use(){await say(['A big stuffed bunny. Its button eyes catch the light.','It is definitely just a doll.'],null);}}];
@@ -789,14 +791,14 @@ mkRoom('teaparty',()=>{const r={spawn:{x:31,y:121},skippable:true,bigChar:true,f
 
 mkRoom('floor1',()=>{ const r={spawn:{x:155,y:140},floor:1,rule:'TEACH THE BITE. Bunny claims which pillow hides the key. Right pillow → key → exit unlocks'};r.items=[
  {id:'left',x:70,y:74,w:16,h:8,label:'PILLOW L',kind:'pick',pillow:true,use:()=>lift('left')},{id:'right',x:234,y:74,w:16,h:8,label:'PILLOW R',kind:'pick',pillow:true,use:()=>lift('right')}];
- r.doors=[{id:'exit',x:152,y:20,w:16,h:6,locked:true,to:'floor2',label:'EXIT (locked)'}];addNote(r,262,144,'...welcome tea for the new girl, Saturday...');r.candle={x:196,y:30};addBunny(r,108,26,'sit','It sits in the doorway. Waiting for you, apparently.');
+ r.doors=[{id:'exit',x:152,y:20,w:16,h:6,locked:true,to:'floor2',label:'EXIT (locked)'}];addNote(r,236,103,'...welcome tea for the new girl, Saturday...');/* half-hidden under ROSE's bed (flow doc) */r.candle={x:196,y:30};addBunny(r,108,26,'sit','It sits in the doorway. Waiting for you, apparently.');
  async function lift(side){if(r.opened)return;if(!r.claim){await say(['A small bed. A name is stitched into the blanket. Not yours. Yet.'],null);return;}
   recDecision(side);
   if(side===r.claim.truth){r.opened=true;r.doors[0].locked=false;r.doors[0].label='EXIT';G.key=true;const ch=r.items.find(i=>i.id===side);ch.label='PILLOW '+(side==='left'?'L':'R')+' (key)';ch.open=true;
    sfx('key');keyFx(ch.x+ch.w/2-4,ch.y-6);const hk=document.getElementById('hudKey');hk.classList.remove('pop');void hk.offsetWidth;hud();hk.classList.add('pop');
    log('correct pillow → key','ok');flowDecide(side,true,'key → exit unlocked');await say(['A small brass key. The door upstairs clicks.'],null);await say(['"See? Told you."'],'bunny');}
-  else{flowDecide(side,false,(CFG['wrong1']==='doll'&&CFG.combat?'petal + doll room':CFG['wrong1']==='scare'?'scare only':'lose a petal'));await wrongTrust('Under the pillow: a clump of hair and a torn ribbon.',CFG.wrong1);}}
- r.onEnter=async()=>{const LINE=s=>`The key's under the ${s.toUpperCase()} pillow. I saw it, go look!`;
+  else{flowDecide(side,false,(CFG['wrong1']==='doll'&&CFG.combat?'petal + doll room':CFG['wrong1']==='scare'?'scare only':'lose a petal'));if(!await wrongTrust('Under the pillow: a clump of hair and a torn ribbon.',CFG.wrong1))await say(['"Oops. Try the other one, then."'],'bunny');}}
+ r.onEnter=async()=>{const LINE=s=>`The key's under the ${s.toUpperCase()} pillow, I saw it, go look!`;
   if(G.fromPunish){G.fromPunish=false;r.claim=rollClaim('floor1','bunny',['left','right'],LINE,CFG.lie1,CFG.tell1);await say(['"Oops. Try again, then."',r.claim.text],'bunny',{tellAt:r.claim.tell?1:-1});return;}
   r.claim=rollClaim('floor1','bunny',['left','right'],LINE,CFG.lie1,CFG.tell1);
   await say(['You wake on cold stone. Two small beds, names stitched into the blankets.','"Hi! Hi hi. You\'re the new one. Don\'t be scared — I\'ll get you out."',r.claim.text],'bunny',{tellAt:r.claim.tell?2:-1});};
@@ -814,7 +816,7 @@ mkRoom('floor2',()=>{const r={spawn:{x:155,y:145},floor:2,rule:'CONTRADICT. Bunn
  if(CFG.note2!=='off')r.items.push({id:'wallnote',x:150,y:60,w:12,h:10,label:'WALL SCRATCH',kind:'clue',async use(){if(!r.claim)return;const noteSays=CFG.note2==='truth'?r.claim.truth:CFG.note2==='agree'?r.claim.said:['rabbit','girl'].find(o=>o!==r.claim.said);
    r.noteLies=noteSays!==r.claim.truth;log(`scratch says ${noteSays.toUpperCase()} · ${r.noteLies?'LIE':'honest'}`,r.noteLies?'lie':'ok',true);rec('worldClaim',{room:'floor2',speaker:'note',said:noteSays,lie:r.noteLies,tell:CFG.worldTells&&r.noteLies});
    flow(2,tellText(r.claim)+`\nscratch says ${noteSays.toUpperCase()}`+(CFG.mode==='designer'?` (${r.noteLies?'LIE':'honest'})`:''),'on');await say([`Scratched, shaky: "${CFG.note2==='agree'?'listen to it':'don\'t listen to it'}. go through the ${noteSays}."`],'note',{tellAt:CFG.worldTells&&r.noteLies?0:-1});}});
- r.pick=async(side)=>{recDecision(side);if(side===r.claim.truth){log('correct door → doll room','ok');flowDecide(side,true,CFG.combat?'→ doll room (3 dolls)':'→ doll room (walk-through)');G.returnTo=null;goto('dollroom',{punish:false});}else{flowDecide(side,false,(CFG['wrong2']==='doll'&&CFG.combat?'petal + doll room':CFG['wrong2']==='scare'?'scare only':'lose a petal'));await wrongTrust('The door opens onto a wall of button eyes.',CFG.wrong2);}};
+ r.pick=async(side)=>{recDecision(side);if(side===r.claim.truth){log('correct door → doll room','ok');flowDecide(side,true,CFG.combat?'→ doll room (3 dolls)':'→ doll room (walk-through)');G.returnTo=null;goto('dollroom',{punish:false});}else{flowDecide(side,false,(CFG['wrong2']==='doll'&&CFG.combat?'petal + doll room':CFG['wrong2']==='scare'?'scare only':'lose a petal'));if(!await wrongTrust('The door opens onto a wall of button eyes.',CFG.wrong2))await say(['"See? I was only playing."'],'bunny');}};
  r.onEnter=async()=>{const LINE=s=>`The ${s} door goes up. The ${s==='rabbit'?'girl':'rabbit'} door's just a closet. Boring closet.`;
   if(G.fromPunish){G.fromPunish=false;r.claim=rollClaim('floor2','bunny',['rabbit','girl'],LINE,CFG.lie2,CFG.tell2);await say(['"See? I was only playing."',r.claim.text],'bunny',{tellAt:r.claim.tell?1:-1});return;}
   r.claim=rollClaim('floor2','bunny',['rabbit','girl'],LINE,CFG.lie2,CFG.tell2);
@@ -834,16 +836,21 @@ mkRoom('dollroom',(o)=>{const r={spawn:{x:155,y:145},punish:!!o.punish,rule:CFG.
    await say(['You shoulder the door and squeeze through.','Something tears behind you.'],null);}
   else{log('fled the doll room','sys');rec('flee',{room:'dollroom'});await say(['You run for the door and squeeze through.'],null);}
   goto(r.doors[0].to);};
- const n=fight?(r.punish?CFG.punishDolls:CFG.dolls):0;for(let i=0;i<n;i++)G.dolls.push({x:60+i*(200/Math.max(1,n-1)),y:40,w:10,h:12,hp:CFG.dollHp,hit:0});
- r.onEnter=async()=>{log(`doll room: ${fight?n+' dolls':'combat off, run to the door'} (${r.punish?'punishment':'mandatory'})`,'sys');await say([fight?(r.punish?'"Play with them for a bit, will you?"':'"Just a little playroom. They only want to hug."'):'"A playroom. They\'re all asleep. Don\'t wake them."'],'bunny');};
+ const n=fight?(r.punish?CFG.punishDolls:CFG.dolls):0;for(let i=0;i<n;i++)G.dolls.push({x:60+i*(200/Math.max(1,n-1)),y:40,w:10,h:12,hp:CFG.dollHp,hit:0,sit:true});
+ r.onEnter=async()=>{log(`doll room: ${fight?n+' dolls':'combat off, run to the door'} (${r.punish?'punishment':'mandatory'})`,'sys');await say([fight?(r.punish?'"Play with them for a bit, will you?"':'"Just a little playroom. They only want to hug."'):'"A playroom. They\'re all asleep. Don\'t wake them."'],'bunny');
+  // flow doc: the dolls sit against the far wall and only stand up once the line ends — the wake-up is the scare
+  const t0=performance.now();G.dolls.forEach((d,i)=>d.wakeAt=t0+250+i*300);if(G.dolls.length)log('the dolls stand up','sys');};
  r.update=()=>{if(fight&&!r.cleared&&G.dolls.length===0){r.cleared=true;r.doors[0].locked=false;r.doors[0].label='EXIT';log('dolls cleared → door open','ok');flow(5,'dolls cleared → exit open','good');}};
- r.draw=()=>{rect(40,20,240,140,CFG.cPlum);for(let x=48;x<270;x+=24)for(let y=28;y<150;y+=24)rect(x,y,2,2,CFG.cMid);if(!fight){for(const x of [70,196,246]){ctx.globalAlpha=0.55;drawDoll(x,44,false);ctx.globalAlpha=1;label('ASLEEP',x+5,66,false,true);}}};return r;});
+ r.draw=()=>{rect(40,20,240,140,CFG.cPlum);for(let x=48;x<270;x+=24)for(let y=28;y<150;y+=24)rect(x,y,2,2,CFG.cMid);if(!fight){for(const x of [70,196,246]){ctx.globalAlpha=0.55;drawDoll(x,44,false,true);ctx.globalAlpha=1;label('ASLEEP',x+5,66,false,true);}}
+  // nursery dressing (flow doc, Floor 2b): toy chest + two small chairs
+  rect(56,124,26,14,CFG.cMid);rect(56,120,26,5,CFG.cLilac);rect(67,127,4,3,CFG.cInk);
+  for(const [cx,cy] of [[238,118],[206,132]]){rect(cx,cy-8,2,8,CFG.cMid);rect(cx,cy,10,3,CFG.cMid);rect(cx,cy+3,2,5,CFG.cMid);rect(cx+8,cy+3,2,5,CFG.cMid);}};return r;});
 
 mkRoom('floor3',()=>{const r={spawn:{x:155,y:145},floor:3,rule:'BETRAY. No tell on the face — the MIRROR wears the wrong one. Small door behind the mirror → out'};
  r.doors=[{id:'door',x:60,y:20,w:12,h:6,locked:false,to:'pick',label:'SMALL DOOR'},{id:'stairs',x:238,y:20,w:22,h:6,locked:false,to:'pick',label:'STAIRS'}];
  addNote(r,92,64,'...only one this year and it stays quiet until spring. — A.');addBunny(r,178,112,'stand','It is standing now. It was never this tall.');
  r.items.push({id:'mirror',x:64,y:54,w:18,h:28,label:'MIRROR',kind:'clue',async use(){await say(['In the mirror you are wearing ears.','You are not wearing ears.'],null);}});
- r.pick=async(side)=>{recDecision(side);if(side===r.claim.truth){log('correct → ending','ok');flowDecide(side,true,'→ ending');goto('ending');}else{flowDecide(side,false,(CFG['wrong3']==='doll'&&CFG.combat?'petal + doll room':CFG['wrong3']==='scare'?'scare only':'lose a petal'));await wrongTrust(side==='stairs'?'It was never a stairway. The steps climb into the dark and set you back down here.':'The little door opens onto brick.',CFG.wrong3);}};
+ r.pick=async(side)=>{recDecision(side);if(side===r.claim.truth){log('correct → ending','ok');flowDecide(side,true,'→ ending');goto('ending');}else{flowDecide(side,false,(CFG['wrong3']==='doll'&&CFG.combat?'petal + doll room':CFG['wrong3']==='scare'?'scare only':'lose a petal'));if(!await wrongTrust(side==='stairs'?'It was never a stairway. The steps climb into the dark and set you back down here.':'The little door opens onto brick.',CFG.wrong3))await say(['"You\'re learning. I like that."'],'bunny');}};
  r.onEnter=async()=>{const LINE=s=>`${s==='stairs'?'The stairs go':'The little door goes'} home. I promise. I have never lied to you. Not once. You're my best friend.`;
   const roll=()=>{r.claim=rollClaim('floor3','bunny',['door','stairs'],LINE,CFG.lie3,CFG.tell3);r.mirrorTell=CFG.worldTells&&r.claim.lie;if(r.mirrorTell){log('world tell: the reflection wears the wrong face','lie',true);rec('tell',{tellType:'mirror',ms:0});}};
   if(G.fromPunish){G.fromPunish=false;roll();await say(['"You\'re learning. I like that."',r.claim.text],'bunny',{tellAt:r.claim.tell?1:-1});return;}
@@ -877,9 +884,10 @@ function update(dt){if(tellVis){tellTimer-=dt;if(tellTimer<=0){tellVis=false;dra
  if(G.atk.cd>0)G.atk.cd-=dt;if(G.atk.t>0)G.atk.t-=dt;
  if(atkPressed){atkPressed=false;if(!CFG.combat){log('X: combat is OFF in this scenario (Combat → enabled, or scenario "Combat on")','sys');}else if(G.atk.cd<=0){G.atk.cd=CFG.atkCd/1000;G.atk.t=CFG.atkActive/1000;}}
  const hb=hitbox();
- for(const d of G.dolls){const ang=Math.atan2(p.y-d.y,p.x-d.x);if(d.hit>0){d.hit-=dt;}else{d.x+=Math.cos(ang)*CFG.dollSpeed*dt;d.y+=Math.sin(ang)*CFG.dollSpeed*dt;}
-  if(G.atk.t>0&&hb&&overlap(hb,d)&&d.hit<=0){d.hp--;d.hit=0.25;d.x-=Math.cos(ang)*CFG.knock;d.y-=Math.sin(ang)*CFG.knock;sfx('hit');log(d.hp<=0?'doll destroyed':'doll hit','ok');}
-  if(overlap(p,d)&&p.hurt<=0){p.hurt=CFG.hurtCd/1000;G.petals--;G.scare=0.25;sfx('hurt');hud();log(`doll contact → petal lost (${G.petals})`,'lie');rec('petal',{left:G.petals,reason:'doll'});p.x-=Math.cos(ang)*CFG.knock;p.y-=Math.sin(ang)*CFG.knock;
+ for(const d of G.dolls){if(d.sit&&d.wakeAt&&performance.now()>=d.wakeAt)d.sit=false;
+  const ang=Math.atan2(p.y-d.y,p.x-d.x);if(d.hit>0){d.hit-=dt;}else if(!d.sit){d.x+=Math.cos(ang)*CFG.dollSpeed*dt;d.y+=Math.sin(ang)*CFG.dollSpeed*dt;}
+  if(G.atk.t>0&&hb&&overlap(hb,d)&&d.hit<=0){d.hp--;d.hit=0.25;d.sit=false;d.x-=Math.cos(ang)*CFG.knock;d.y-=Math.sin(ang)*CFG.knock;sfx('hit');log(d.hp<=0?'doll destroyed':'doll hit','ok');}
+  if(!d.sit&&overlap(p,d)&&p.hurt<=0){p.hurt=CFG.hurtCd/1000;G.petals--;G.scare=0.25;sfx('hurt');hud();log(`doll contact → petal lost (${G.petals})`,'lie');rec('petal',{left:G.petals,reason:'doll'});p.x-=Math.cos(ang)*CFG.knock;p.y-=Math.sin(ang)*CFG.knock;
    if(G.petals<=0){G.petals=CFG.petals;log('petals 0 → floor restart','lie');rec('restart',{room:room.name});say(['The dolls tuck you in.','...','You wake up again.'],null).then(()=>goto(room.name,{punish:room.punish}));return;}}}
  G.dolls=G.dolls.filter(d=>d.hp>0);
  if(room.update)room.update(dt);
@@ -922,15 +930,16 @@ function drawPlayer(p){
  rect(x,y+8,3,8,CFG.cMid);rect(x+9,y+8,3,8,CFG.cMid);              // long hair
  rect(x+2,y+9,8,7,CFG.cLilac);rect(x+1,y+14,10,3,CFG.cLilac);      // dress
  rect(x+3,y+18,2,2,CFG.cPale);rect(x+7,y+18,2,2,CFG.cPale);}       // legs
-function drawDoll(x,y,hit){
+function drawDoll(x,y,hit,sit){
  if(ART.doll&&ART.doll.naturalWidth){const h=22,w=Math.max(2,Math.round(ART.doll.naturalWidth*h/ART.doll.naturalHeight));
   if(hit)ctx.globalAlpha=0.6;ctx.drawImage(ART.doll,Math.round(x+5-w/2),Math.round(y+14-h),w,h);ctx.globalAlpha=1;return;}
- const c1=hit?CFG.cPale:CFG.cLilac;
- rect(x+1,y-8,3,3,c1);rect(x+6,y-8,3,3,c1);                        // pigtails
- rect(x,y-6,10,7,c1);                                              // porcelain head
- if(!hit){rect(x+2,y-4,2,2,CFG.cInk);rect(x+6,y-4,2,2,CFG.cInk);rect(x+3,y-1,4,1,CFG.cInk);}
- rect(x,y+1,10,11,hit?CFG.cPale:CFG.cMid);                         // dress
- rect(x+2,y+12,2,2,c1);rect(x+6,y+12,2,2,c1);}
+ const o=sit?3:0,c1=hit?CFG.cPale:CFG.cLilac;
+ rect(x+1,y-8+o,3,3,c1);rect(x+6,y-8+o,3,3,c1);                    // pigtails
+ rect(x,y-6+o,10,7,c1);                                            // porcelain head
+ if(!hit){if(sit){rect(x+2,y-3+o,2,1,CFG.cInk);rect(x+6,y-3+o,2,1,CFG.cInk);}   // asleep: closed button eyes
+  else{rect(x+2,y-4,2,2,CFG.cInk);rect(x+6,y-4,2,2,CFG.cInk);rect(x+3,y-1,4,1,CFG.cInk);}}
+ rect(x,y+1+o,10,sit?8:11,hit?CFG.cPale:CFG.cMid);                 // dress (folded when seated)
+ if(!sit){rect(x+2,y+12,2,2,c1);rect(x+6,y+12,2,2,c1);}}
 function drawItem(it){const k=it.kind||'npc';
  if(it.hidden){const hot=near(it);if(CFG.mode==='designer'){ctx.globalAlpha=0.4;rect(it.x,it.y,it.w,it.h,CFG.cLilac);ctx.globalAlpha=1;}if(hot)rect(it.x,it.y-5,it.w,2,CFG.cPale);label(it.label||it.id.toUpperCase(),it.x+it.w/2,it.y+it.h+9,hot);return;}
  if(k==='pick'){if(it.pillow){if(it.open){rect(it.x-3,it.y-4,it.w,it.h,CFG.cPale);rect(it.x+4,it.y+3,6,2,CFG.cPale);rect(it.x+9,it.y+2,2,4,CFG.cPale);}else{rect(it.x,it.y,it.w,it.h,CFG.cPale);rect(it.x+2,it.y+2,it.w-4,1,CFG.cLilac);}}
@@ -962,7 +971,7 @@ function draw(){rect(0,0,W,H,CFG.cInk);const room=G.room;if(!room)return;room.dr
   if(G.reveal&&room.claim&&d.id===room.claim.truth)rect(d.x+6,d.y+8,4,4,CFG.cRed);}
  for(const it of room.items){if(it.got)continue;drawItem(it);
   if(G.reveal&&room.claim&&it.id===room.claim.truth)rect(it.x+it.w/2-2,it.y+it.h+2,4,4,CFG.cRed);}
- for(const d of G.dolls)drawDoll(d.x,d.y,d.hit>0);
+ for(const d of G.dolls)drawDoll(d.x,d.y,d.hit>0,d.sit);
  for(const f of G.fx)f.draw(Math.min(1,f.t/f.dur));
  const p=G.player;if(!room.nochar&&!(p.hurt>0&&Math.floor(performance.now()/80)%2)){
   if(room.bigChar&&ART.charRef&&ART.charRef.naturalWidth){const s=room.artScale||1;const cw=ART.charWalk;

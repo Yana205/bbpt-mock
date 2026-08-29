@@ -50,6 +50,8 @@ test('floor 1: correct pillow unlocks door, wrong pillow costs a petal', async (
   await useAt(page, ...pos[wrong]);
   await page.waitForFunction(() => BB.state.petals === 2);
   await skip(page);
+  await page.waitForFunction(() => BB.dialogOpen(), null, { timeout: 2000 }).catch(() => {});
+  await skip(page); // Boo's "Oops. Try the other one, then." (flow doc)
   await useAt(page, ...pos[truth]);
   await page.waitForFunction(() => BB.state.room.doors[0].locked === false);
   const s = await page.evaluate(() => BB.summary());
@@ -461,4 +463,30 @@ test('movement: diagonals work — W is not eaten while a horizontal key is held
   const after = await page.evaluate(() => ({ x: BB.state.player.x, y: BB.state.player.y }));
   expect(after.x).toBeGreaterThan(before.x);
   expect(after.y).toBeLessThan(before.y); // moved up while moving right
+});
+
+test('doll room: dolls sit asleep until Boo finishes her line, then stand up (flow doc)', async ({ page }) => {
+  await page.goto(url + '?seed=1&room=dollroom&combat=1');
+  await waitRoom(page, 'dollroom');
+  expect(await page.evaluate(() => BB.state.dolls.length)).toBe(3);
+  expect(await page.evaluate(() => BB.state.dolls.every(d => d.sit))).toBe(true); // asleep during the line
+  const pos = await page.evaluate(() => BB.state.dolls.map(d => d.x + ',' + d.y).join(' '));
+  await skip(page);
+  await page.waitForFunction(() => BB.state.dolls.every(d => !d.sit), null, { timeout: 3000 });
+  await page.waitForTimeout(300);
+  expect(await page.evaluate(() => BB.state.dolls.map(d => d.x + ',' + d.y).join(' '))).not.toBe(pos); // awake and walking
+});
+
+test('tea party: the tell fires on the word "Promise", not at the start of the line', async ({ page }) => {
+  await page.goto(url + '?seed=1&room=teaparty');
+  await waitRoom(page, 'teaparty');
+  await skip(page);
+  await page.evaluate(() => { BB.state.room.items.find(i => i.id === 'girlA').use(); });
+  await page.waitForFunction(() => BB.dialogOpen());
+  await page.evaluate(() => BB.press('KeyZ')); // complete line 1 instantly
+  await page.waitForTimeout(120);
+  await page.evaluate(() => BB.press('KeyZ')); // advance to the claim line — typing starts
+  await page.waitForTimeout(350); // ~14 chars typed at 40 cps, well before "Promise" (~char 55)
+  expect(await page.evaluate(() => BB.session.events.some(e => e.type === 'tell'))).toBe(false);
+  await page.waitForFunction(() => BB.session.events.some(e => e.type === 'tell'), null, { timeout: 4000 });
 });

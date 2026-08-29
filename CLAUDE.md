@@ -15,6 +15,7 @@ This folder is the **web testbed** (single-file HTML) that precedes the Unity bu
 | `fonts/runtime/` | self-hosted Silkscreen + Atkinson woff2 (offline / itch-iframe safe). |
 | `tools/build-assets.mjs` | regenerates the `/*ART*/ /*AUDIO*/ /*FONTS*/` marker blocks from those dirs. |
 | `LOGIC.md` | the trust/tell logic and room flow, in prose + tables. Read it before touching rooms. |
+| *story source* | the **Bunny Boo Flow** artifact (claude.ai/code/artifact/7c086664-f0a8-42e9-bcec-5cf12dd00f24) owns the words and beats; `unity/approved-config.json` owns the numbers and punishments (frozen 2026-08-28) — on conflict, doc = narrative, config = tuning. Aligned 2026-08-29: tea tell fires on the word "Promise" (`say` opts `tellChar`), dolls sit asleep until Boo's line ends then stand (`d.sit`/`wakeAt`, nursery dressing), Boo reacts after in-room wrong trusts, note 1 under ROSE's bed. |
 | `README.md` | how to use the rail, scenarios, review log. |
 
 All five AI-generated placeholder PNGs (bunny heads, player, doll, tea room) are **gone** (2026-08-29, jam rule). Characters are procedural rect sprites; the tea room is composed from the friends' art.
