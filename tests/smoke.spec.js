@@ -418,3 +418,20 @@ test('horror floors: the purple-remapped charRef stands in for the rect player (
   await page.waitForTimeout(200);
   expect(errors).toEqual([]);
 });
+
+test('title card: text/bunny are selectable card elements — inspector edits, drag moves', async ({ page }) => {
+  await page.goto(url + '?seed=1&room=title&mode=designer');
+  await waitRoom(page, 'title');
+  // entering a card screen in EDIT auto-opens the inspector with a hint
+  expect(await page.locator('#insWin').getAttribute('class')).not.toContain('hidden');
+  expect(await page.locator('#insBody').textContent()).toContain('card screen');
+  expect(await page.evaluate(() => BB.editor.select('card', 'titleText'))).toBe(true);
+  expect(await page.locator('#insBody').textContent()).toContain('TITLE TEXT');
+  await page.evaluate(() => BB.editor.move(0, 80)); // text is centered: only Y moves
+  expect(await page.evaluate(() => BB.cfg.titleY)).toBe(80);
+  await page.evaluate(() => BB.editor.undo());
+  expect(await page.evaluate(() => BB.cfg.titleY)).toBe(62);
+  expect(await page.evaluate(() => BB.editor.select('card', 'bunny'))).toBe(true);
+  await page.evaluate(() => BB.editor.move(150, 90));
+  expect(await page.evaluate(() => [BB.cfg.bunnyX, BB.cfg.bunnyY])).toEqual([150, 90]);
+});

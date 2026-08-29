@@ -331,7 +331,7 @@ const DEF={mode:'playtest',seed:1,timeScale:1,skipIntro:false,release:false,
  combat:true,dolls:3,dollSpeed:28,dollHp:1,atkReach:14,atkActive:120,atkCd:380,knock:18,hurtCd:900,flee:'free',
  speed:60,reach:14,textSpeed:40,
  teaScale:0.5,sprChar:true,
- titleText:'BUNNY BOO',titleSub:'a welcome tea party for the new girl',titleFont:'Silkscreen',titleSize:26,titleColor:'#e0aab8',titleSubColor:'#c2839a',endTagline:'the torn notes remember more than you do',
+ titleText:'BUNNY BOO',titleSub:'a welcome tea party for the new girl',titleFont:'Silkscreen',titleSize:26,titleColor:'#e0aab8',titleSubColor:'#c2839a',titleY:62,subY:80,bunnyX:138,bunnyY:86,endTagline:'the torn notes remember more than you do',
  cInk:'#0e0a14',cPlum:'#241a3a',cMid:'#4a3a6b',cLilac:'#9a86c4',cPale:'#d9cfee',cRed:'#c8262e'};
 let CFG={...DEF};
 // storage key bumped to v3 for the submission polish pass (2026-08-29: quicker tell, audio, release chrome)
@@ -550,7 +550,7 @@ function spr(name,x,y,flip,s=1){const im=ART[name];if(!im||!im.naturalWidth)retu
 /* soft "got it" moment: pale glow + a pixel key floating up from (x,y). Deliberately quiet — no red, no shake. */
 function keyFx(x,y){G.glow=0.5;G.fx.push({t:0,dur:0.85,x,y,draw(f){const dy=-14*(1-(1-f)*(1-f));ctx.globalAlpha=1-f*f;const kx=Math.round(this.x),ky=Math.round(this.y+dy);rect(kx,ky+1,3,3,CFG.cPale);rect(kx+1,ky+2,1,1,CFG.cPlum);rect(kx+3,ky+2,5,1,CFG.cPale);rect(kx+6,ky+3,1,2,CFG.cPale);rect(kx+8,ky+3,1,2,CFG.cPale);ctx.globalAlpha=1;}});}
 function mkRoom(name,build){R[name]={name,build};}
-function goto(name,opts={}){if(G.busy)return;if(D)endDialog();G.busy=true;G.fade=1;G.fx=[];setTimeout(()=>{const r=R[name];G.dolls=[];const b=r.build(opts);b.name=name;b.items=b.items||[];b.doors=b.doors||[];b.claim=b.claim||null;applyLayout(b);G.room=b;G.player.x=G.room.spawn?.x??160;G.player.y=G.room.spawn?.y??140;G.player.hurt=0;roomSel.value=name;syncTabs();hud();log(`enter ${name}`,'sys');rec('enter',{room:name});flowReset();flow(0,name,'on');ruleLine();G.busy=false;G.fade=-1;musicSync();if(!b.quiet)sfx('door');if(G.room.onEnter)G.room.onEnter();},250);}
+function goto(name,opts={}){if(G.busy)return;if(D)endDialog();G.busy=true;G.fade=1;G.fx=[];setTimeout(()=>{const r=R[name];G.dolls=[];const b=r.build(opts);b.name=name;b.items=b.items||[];b.doors=b.doors||[];b.claim=b.claim||null;applyLayout(b);G.room=b;G.player.x=G.room.spawn?.x??160;G.player.y=G.room.spawn?.y??140;G.player.hurt=0;roomSel.value=name;syncTabs();hud();log(`enter ${name}`,'sys');rec('enter',{room:name});flowReset();flow(0,name,'on');ruleLine();if(CFG.mode==='designer'){ED.sel=null;selSync();if(b.cardEls)document.getElementById('insWin').classList.remove('hidden');}G.busy=false;G.fade=-1;musicSync();if(!b.quiet)sfx('door');if(G.room.onEnter)G.room.onEnter();},250);}
 
 /* ---------- LAYOUT EDITOR v2 (EDIT mode: click = select + inspector, drag = move; hotspots with `follow` travel with their art; saved per room) ---------- */
 let LAY={};try{const s=localStorage.getItem('bb.layout2');if(s)LAY=JSON.parse(s);}catch(e){}
@@ -572,20 +572,26 @@ function layPut(t,o){const L=layRoom();
  if(t==='deco'){L.deco=L.deco||{};const e=L.deco[o._id]=L.deco[o._id]||{};e.x=o.x;e.y=o.y;if(o.s!=null)e.s=o.s;if(o.flip!=null)e.flip=!!o.flip;}
  else{const k=t==='item'?'items':'doors';L[k]=L[k]||{};const e=L[k][o.id]=L[k][o.id]||{};e.x=o.x;e.y=o.y;if(t==='item'){e.w=o.w;e.h=o.h;}if(o.reach!=null)e.reach=o.reach;if(o.label!=null)e.label=o.label;}
  saveLay();}
-function pushUndo(){const s=ED.sel;if(!s)return;const o=s.o;ED.undo.push({room:G.room.name,t:s.t,o,snap:{x:o.x,y:o.y,w:o.w,h:o.h,s:o.s,reach:o.reach,label:o.label,flip:o.flip}});if(ED.undo.length>80)ED.undo.shift();}
+function pushUndo(){const s=ED.sel;if(!s)return;const o=s.o;
+ if(s.t==='card'){ED.undo.push({room:G.room.name,t:'card',o,cfgSnap:Object.fromEntries(o.fields.map(f=>[f[0],CFG[f[0]]]))});}
+ else ED.undo.push({room:G.room.name,t:s.t,o,snap:{x:o.x,y:o.y,w:o.w,h:o.h,s:o.s,reach:o.reach,label:o.label,flip:o.flip}});
+ if(ED.undo.length>80)ED.undo.shift();}
 function undoEdit(){const u=ED.undo.pop();if(!u){log('nothing to undo','sys');return;}
  if(!G.room||G.room.name!==u.room){log('undo: from another room — skipped','sys');return;}
  if(u.restore){u.restore();selSync();log('undo','sys');return;}
+ if(u.cfgSnap){Object.assign(CFG,u.cfgSnap);saveCfg();syncInputs();selSync();log('undo','sys');return;}
  const dx=u.snap.x-u.o.x,dy=u.snap.y-u.o.y;Object.assign(u.o,u.snap);
  if(u.t==='deco'&&u.o._id)for(const it of G.room.items||[])if(it.follow===u.o._id){it.x+=dx;it.y+=dy;layPut('item',it);}
  layPut(u.t,u.o);selSync();log('undo','sys');}
 function moveSel(nx,ny){const s=ED.sel;if(!s)return;const o=s.o;if(ED.snap){nx=Math.round(nx/4)*4;ny=Math.round(ny/4)*4;}else{nx=Math.round(nx);ny=Math.round(ny);}
  const dx=nx-o.x,dy=ny-o.y;if(!dx&&!dy)return;o.x=nx;o.y=ny;
+ if(s.t==='card'){saveCfg();syncInputs();selSync(true);return;}
  if(s.t==='deco'&&o._id)for(const it of G.room.items||[])if(it.follow===o._id){it.x+=dx;it.y+=dy;layPut('item',it);}
  layPut(s.t,o);selSync(true);}
 let drag=null;
 function canvasPos(e){const r=cv.getBoundingClientRect();return{x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height};}
 function pickAt(m){const room=G.room,hit=b=>m.x>=b.x&&m.x<=b.x+b.w&&m.y>=b.y&&m.y<=b.y+b.h;
+ for(const c of room.cardEls||[])if(hit(c.box()))return{t:'card',o:c};
  for(const it of room.items||[])if(!it.got&&hit({x:it.x-2,y:it.y-2,w:it.w+4,h:it.h+4}))return{t:'item',o:it};
  for(const d of room.doors||[])if(hit({x:d.x-2,y:d.y-2,w:d.w+4,h:d.h+10}))return{t:'door',o:d};
  if(room.deco)for(let i=room.deco.length-1;i>=0;i--)if(hit(decoBox(room.deco[i])))return{t:'deco',o:room.deco[i]};
@@ -604,9 +610,17 @@ function insNum(lab,get,set,step){const i=document.createElement('input');i.type
 function selSync(light){const s=ED.sel;
  if(light){if(s&&ED.fx){ED.fx.value=s.o.x;ED.fy.value=s.o.y;}return;}
  insBody.innerHTML='';ED.fx=ED.fy=null;
- if(!s){insBody.innerHTML='<p class="mini">Click something on the canvas.</p>';return;}
+ if(!s){insBody.innerHTML=`<p class="mini">${G.room&&G.room.cardEls?'This is a card screen — click the big title, the subtitle or the bunny on the canvas to edit its text, font, colors and position (drag moves it).':'Click something on the canvas.'}</p>`;return;}
  const{t,o}=s,room=G.room;
  const h=document.createElement('p');h.className='mini';h.innerHTML=`<b>${o.label||o.id||o._id||''}</b> · ${t}${o.kind?' · '+o.kind:''}${o.k&&o.k!==(o._id||'')?' · '+o.k:''}`;insBody.appendChild(h);
+ if(t==='card'){
+  for(const [key,lab,type] of o.fields){let el;
+   if(type==='font'){el=document.createElement('select');['Silkscreen','Atkinson Hyperlegible'].forEach(v=>{const op=document.createElement('option');op.value=v;op.textContent=v;el.appendChild(op);});el.value=CFG[key];}
+   else{el=document.createElement('input');el.type=type;el.value=CFG[key];}
+   el.addEventListener('input',()=>{pushUndo();const v=type==='number'?parseFloat(el.value):el.value;if(type==='number'&&isNaN(v))return;CFG[key]=v;saveCfg();syncInputs();});
+   insRow(lab,el);}
+  const p=document.createElement('p');p.className='mini';p.textContent=(o.note?o.note+' · ':'')+'these are config values — SHARE LINK / COPY CONFIG carry them (also in rail → Title & end cards)';insBody.appendChild(p);
+  insWin.classList.remove('hidden');return;}
  ED.fx=insNum('X',()=>o.x,v=>moveSel(v,o.y));ED.fy=insNum('Y',()=>o.y,v=>moveSel(o.x,v));
  if(t==='item'){insNum('Hotspot W',()=>o.w,v=>{o.w=Math.max(2,Math.round(v));layPut(t,o);});insNum('Hotspot H',()=>o.h,v=>{o.h=Math.max(2,Math.round(v));layPut(t,o);});}
  if(t==='item'||t==='door')insNum('Interact radius px',()=>o.reach??CFG.reach,v=>{o.reach=Math.max(0,v);layPut(t,o);});
@@ -694,16 +708,31 @@ mkRoom('lab',()=>{const r={spawn:{x:155,y:145},lab:true,n:0,hits:0};
 /* title card: black + the tea-party pink. Space starts the run. */
 mkRoom('title',()=>{const r={spawn:{x:-99,y:-99},title:true,nochar:true,quiet:true,rule:'TITLE. Space starts a run.'};
  r.onEnter=()=>{log('title screen','sys');};
- r.draw=()=>{rect(0,0,W,H,CFG.cInk);ctx.textAlign='center';const F=`'${CFG.titleFont}',monospace`;
-  ctx.font=`700 ${CFG.titleSize}px ${F}`;ctx.fillStyle=CFG.titleColor;ctx.fillText(CFG.titleText,W/2,62);
-  ctx.font=`8px ${F}`;ctx.fillStyle=CFG.titleSubColor;ctx.fillText(CFG.titleSub,W/2,80);
-  spr('bunny',W/2-22,86);
-  if(Math.floor(performance.now()/600)%2){ctx.font=`8px ${F}`;ctx.fillStyle=CFG.cPale;ctx.fillText('PRESS SPACE',W/2,162);}
-  ctx.font=`8px ${F}`;ctx.fillStyle=CFG.cMid;ctx.fillText('arrows move · space acts · m sound',W/2,174);
+ /* card elements: in EDIT mode these are clickable — the inspector edits their text/font/colors, dragging moves them */
+ const F=()=>`'${CFG.titleFont}',monospace`;
+ r.cardEls=[
+  {id:'titleText',label:'TITLE TEXT',fields:[['titleText','Text','text'],['titleFont','Font','font'],['titleSize','Size px','number'],['titleColor','Color','color'],['titleY','Y','number']],
+   box(){ctx.font=`700 ${CFG.titleSize}px ${F()}`;const w=Math.min(W,ctx.measureText(CFG.titleText).width||40);return{x:W/2-w/2,y:CFG.titleY-CFG.titleSize,w,h:CFG.titleSize+6};},
+   get x(){return this.box().x;},set x(v){},get y(){return CFG.titleY;},set y(v){CFG.titleY=Math.round(v);}},
+  {id:'subtitle',label:'SUBTITLE',fields:[['titleSub','Text','text'],['titleSubColor','Color','color'],['subY','Y','number']],
+   box(){ctx.font=`8px ${F()}`;const w=Math.min(W,ctx.measureText(CFG.titleSub).width||40);return{x:W/2-w/2,y:CFG.subY-8,w,h:12};},
+   get x(){return this.box().x;},set x(v){},get y(){return CFG.subY;},set y(v){CFG.subY=Math.round(v);}},
+  {id:'bunny',label:'BUNNY PLUSH',fields:[['bunnyX','X','number'],['bunnyY','Y','number']],note:'swap the art itself in rail → Characters & sprites (bunny upload)',
+   box(){const im=ART.bunny;return{x:CFG.bunnyX,y:CFG.bunnyY,w:(im&&im.naturalWidth)||44,h:(im&&im.naturalHeight)||64};},
+   get x(){return CFG.bunnyX;},set x(v){CFG.bunnyX=Math.round(v);},get y(){return CFG.bunnyY;},set y(v){CFG.bunnyY=Math.round(v);}}];
+ r.draw=()=>{rect(0,0,W,H,CFG.cInk);ctx.textAlign='center';
+  ctx.font=`700 ${CFG.titleSize}px ${F()}`;ctx.fillStyle=CFG.titleColor;ctx.fillText(CFG.titleText,W/2,CFG.titleY);
+  ctx.font=`8px ${F()}`;ctx.fillStyle=CFG.titleSubColor;ctx.fillText(CFG.titleSub,W/2,CFG.subY);
+  spr('bunny',CFG.bunnyX,CFG.bunnyY);
+  if(Math.floor(performance.now()/600)%2){ctx.font=`8px ${F()}`;ctx.fillStyle=CFG.cPale;ctx.fillText('PRESS SPACE',W/2,162);}
+  ctx.font=`8px ${F()}`;ctx.fillStyle=CFG.cMid;ctx.fillText('arrows move · space acts · m sound',W/2,174);
   ctx.textAlign='left';};return r;});
 /* end card: result + stats + play again. Replaces the old silent instant-reset loop. */
 mkRoom('endcard',(o)=>{const r={spawn:{x:-99,y:-99},endcard:true,nochar:true,quiet:true,secret:!!o.secret,rule:'END CARD. Space → title.'};
  r.onEnter=()=>{sfx('end');};
+ r.cardEls=[{id:'endTagline',label:'END TAGLINE',fields:[['endTagline','Text','text'],['titleFont','Font','font']],
+  box(){ctx.font=`8px '${CFG.titleFont}',monospace`;const w=Math.min(W,ctx.measureText(CFG.endTagline||' ').width||40);return{x:W/2-w/2,y:108,w,h:12};},
+  get x(){return this.box().x;},set x(v){},get y(){return 116;},set y(v){}}];
  r.draw=()=>{rect(0,0,W,H,CFG.cInk);ctx.textAlign='center';const F=`'${CFG.titleFont}',monospace`;
   ctx.font=`700 16px ${F}`;ctx.fillStyle=r.secret?CFG.titleColor:CFG.cLilac;ctx.fillText(r.secret?'— SECRET ENDING —':'— ENDING —',W/2,56);
   const s=summary();ctx.font=`8px ${F}`;ctx.fillStyle=CFG.cLilac;
@@ -932,13 +961,13 @@ function draw(){rect(0,0,W,H,CFG.cInk);const room=G.room;if(!room)return;room.dr
  if(G.fade){ctx.fillStyle=CFG.cInk;ctx.globalAlpha=Math.abs(G.fade);ctx.fillRect(0,0,W,H);ctx.globalAlpha=1;}}
 /* editor overlay: selection outline + handles, the selected object's interact radius, optional all-hitboxes layer */
 function edCirc(o){const r=(o.reach??CFG.reach)+Math.max(o.w,o.h)/2;ctx.beginPath();ctx.arc(o.x+o.w/2,o.y+o.h/2,r,0,Math.PI*2);ctx.stroke();}
-function selBox(){const{t,o}=ED.sel;return t==='deco'?decoBox(o):{x:o.x,y:o.y,w:o.w,h:o.h+(t==='door'?6:0)};}
+function selBox(){const{t,o}=ED.sel;return t==='deco'?decoBox(o):t==='card'?o.box():{x:o.x,y:o.y,w:o.w,h:o.h+(t==='door'?6:0)};}
 function drawEd(room){ctx.save();ctx.lineWidth=1;
  if(ED.hit){ctx.strokeStyle=CFG.cLilac;ctx.globalAlpha=0.45;ctx.strokeRect(42.5,22.5,234,135);
   for(const it of room.items||[]){if(!it.got)edCirc(it);}for(const d of room.doors||[])edCirc(d);ctx.globalAlpha=1;}
  const s=ED.sel;
  if(s){const b=selBox();
-  if(s.t!=='deco'){ctx.strokeStyle=CFG.cRed;ctx.globalAlpha=0.75;edCirc(s.o);ctx.globalAlpha=1;}
+  if(s.t==='item'||s.t==='door'){ctx.strokeStyle=CFG.cRed;ctx.globalAlpha=0.75;edCirc(s.o);ctx.globalAlpha=1;}
   ctx.strokeStyle=CFG.cPale;ctx.setLineDash([3,2]);ctx.lineDashOffset=-Math.floor(performance.now()/60)%5;
   ctx.strokeRect(b.x-1.5,b.y-1.5,b.w+3,b.h+3);ctx.setLineDash([]);
   ctx.fillStyle=CFG.cRed;for(const[hx,hy]of[[b.x-3,b.y-3],[b.x+b.w+1,b.y-3],[b.x-3,b.y+b.h+1],[b.x+b.w+1,b.y+b.h+1]])ctx.fillRect(hx,hy,2,2);
@@ -957,7 +986,7 @@ window.BB={cfg:CFG,state:G,session:S,goto,resetRun,summary,exportSession,scenari
  roomClaim:()=>G.room?.claim||null,
  audio:{on:()=>CFG.sound,track:()=>MUS.track,set:setSound},
  music:{map:roomMusicMap,set:(room,t)=>{const m=roomMusicMap();if(t)m[room]=t;else delete m[room];CFG.roomMusic=Object.keys(m).length?JSON.stringify(m):'';saveCfg();musicSync();}},
- editor:{select:(t,id)=>{const room=G.room;if(!room)return false;const o=t==='deco'?(room.deco||[]).find(d=>d._id===id):(t==='item'?room.items:room.doors).find(x=>x.id===id);ED.sel=o?{t,o}:null;selSync();return!!o;},
+ editor:{select:(t,id)=>{const room=G.room;if(!room)return false;const o=t==='deco'?(room.deco||[]).find(d=>d._id===id):t==='card'?(room.cardEls||[]).find(c=>c.id===id):(t==='item'?room.items:room.doors).find(x=>x.id===id);ED.sel=o?{t,o}:null;selSync();return!!o;},
   selected:()=>ED.sel?{t:ED.sel.t,id:ED.sel.o.id||ED.sel.o._id,x:ED.sel.o.x,y:ED.sel.o.y}:null,
   move:(x,y)=>{pushUndo();moveSel(x,y);},undo:undoEdit,layout:()=>LAY,snap:v=>{ED.snap=!!v;},hitboxes:v=>{ED.hit=!!v;},del:delDeco,dup:dupDeco},
  fxCount:()=>G.fx.length};
