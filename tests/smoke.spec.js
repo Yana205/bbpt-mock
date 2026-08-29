@@ -651,3 +651,13 @@ test('horror player: walking all four directions renders without errors', async 
   await page.waitForTimeout(150);   // idle facing down = heroIdle pose
   expect(errors).toEqual([]);
 });
+
+test('music: a global pick never leaks into the house — horror rooms stay on the drone', async ({ page }) => {
+  await page.goto(url + '?seed=1&skipIntro=1&sound=1&music=musicbox');   // a stale saved global pick (e.g. a music-box audition)
+  await waitRoom(page, 'floor1');
+  await page.keyboard.press('a');   // gesture unlocks audio
+  await page.waitForFunction(() => BB.audio.track() === 'drone');       // the house keeps its horror loop
+  await page.evaluate(() => BB.goto('teaparty'));
+  await page.waitForFunction(() => BB.state.room && BB.state.room.name === 'teaparty');
+  await page.waitForFunction(() => BB.audio.track() === 'musicbox');    // the pick still colors the facade
+});

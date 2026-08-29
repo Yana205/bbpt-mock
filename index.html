@@ -245,7 +245,7 @@ if(m!=='designer')a.className='app pt norail'+(rel?' rel':'');})();</script>
     <div class="row"><label>Text chars / s</label><input type="number" data-cfg="textSpeed" step="5"></div>
   </details>
   <details open><summary>Sound &amp; music</summary>
-    <p class="hint">Pick what plays where. AUTO = music box in the tea party &amp; title, drone in the house. The ♫ / SFX buttons by the HUD toggle music and effects separately; M mutes everything. <b>All tracks + per-room picks: EDIT bar → ♫ MUSIC.</b></p>
+    <p class="hint">The global pick colors the tea party / title / ending only; <b>the house always plays its own dark loop</b> — change a horror room's track with a per-room override. The ♫ / SFX buttons by the HUD toggle music and effects separately; M mutes everything. <b>All tracks + per-room picks: EDIT bar → ♫ MUSIC.</b></p>
     <div class="btns" id="musicBtns">
       <button data-music="auto">AUTO</button>
       <button data-music="musicbox">MUSIC BOX</button>
@@ -389,8 +389,15 @@ function roomMusicMap(){try{return CFG.roomMusic?JSON.parse(CFG.roomMusic):{};}c
 function musVolFor(t){return Math.max(0,Math.min(1,CFG.musVol*(t==='musicbox'?0.8:1)));}
 function musicTrackFor(){if(!CFG.sound||!CFG.musicOn||CFG.music==='off')return null;const r=G.room&&G.room.name;
  const ov=r&&roomMusicMap()[r];if(ov){if(ov==='off')return null;if(AUDIO_SRC[ov])return ov;}
- if(CFG.music!=='auto')return CFG.music;if(!r)return null;return (r==='title'||r==='teaparty'||r==='ending'||r==='endcard')?'musicbox':'drone';}
-function musicSync(){const t=musicTrackFor();if(t===MUS.track&&MUS.el)return;if(MUS.el){MUS.el.pause();MUS.el=null;}MUS.track=t;if(!t||!AUDIO_SRC[t])return;const el=new Audio(AUDIO_SRC[t]);el.loop=true;el.volume=musVolFor(t);el.play().catch(()=>{});MUS.el=el;}
+ if(!r)return null;
+ /* the house ALWAYS plays the horror drone (2026-08-30, Yana: it must switch in the horror rooms) —
+    a non-auto global pick only recolors the facade rooms (title/tea/ending), so a stale saved pick or a
+    music-box audition can never leak tea music into the house. Per-room overrides (above) still beat this. */
+ if(!(r==='title'||r==='teaparty'||r==='ending'||r==='endcard'))return 'drone';
+ return CFG.music!=='auto'&&AUDIO_SRC[CFG.music]?CFG.music:'musicbox';}
+function musicSync(){const t=musicTrackFor();
+ if(t===MUS.track&&MUS.el){if(MUS.el.paused)MUS.el.play().catch(()=>{});return;}   // same track but autoplay-blocked earlier: the next gesture resumes it (title/tea share a track, so without this they stay silent)
+ if(MUS.el){MUS.el.pause();MUS.el=null;}MUS.track=t;if(!t||!AUDIO_SRC[t])return;const el=new Audio(AUDIO_SRC[t]);el.loop=true;el.volume=musVolFor(t);el.play().catch(()=>{});MUS.el=el;}
 function tone(f,dur,type='sine',vol=0.12,when=0,slide=0){const c=audioCtx();if(!c)return;const o=c.createOscillator(),g=c.createGain();o.type=type;const t0=c.currentTime+when;o.frequency.setValueAtTime(f,t0);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,f+slide),t0+dur);g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(vol,t0+0.01);g.gain.exponentialRampToValueAtTime(0.0001,t0+dur);o.connect(g).connect(c.destination);o.start(t0);o.stop(t0+dur+0.02);}
 function noise(dur,vol=0.08,when=0,hp=0){const c=audioCtx();if(!c)return;const n=Math.floor(c.sampleRate*dur),b=c.createBuffer(1,n,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*(1-i/n);/* Math.random is fine here: audio texture, not game logic */const s=c.createBufferSource();s.buffer=b;const g=c.createGain();g.gain.value=vol;let node=s;if(hp){const f=c.createBiquadFilter();f.type='highpass';f.frequency.value=hp;s.connect(f);node=f;}node.connect(g).connect(c.destination);s.start(c.currentTime+when);}
 const SFX={
@@ -462,7 +469,7 @@ const MROOMS=['title','teaparty','floor1','floor2','dollroom','floor3','ending',
 const musGlobal=document.getElementById('musGlobal'),musRoomsEl=document.getElementById('musRooms'),musUpsEl=document.getElementById('musUps'),musWin=document.getElementById('musWin');
 function musTracks(){return Object.keys(AUDIO_SRC);}   // embedded loops + browser uploads
 function musWinSync(){
- musGlobal.innerHTML='';[['auto','auto (tea/title=box, house=drone)'],...musTracks().map(t=>[t,t]),['off','off']].forEach(([v,t])=>{const o=document.createElement('option');o.value=v;o.textContent=t;musGlobal.appendChild(o);});
+ musGlobal.innerHTML='';[['auto','auto (tea/title = music box · house always drone)'],...musTracks().map(t=>[t,t+' (tea/title only — house stays drone)']),['off','off']].forEach(([v,t])=>{const o=document.createElement('option');o.value=v;o.textContent=t;musGlobal.appendChild(o);});
  musGlobal.value=CFG.music;
  const map=roomMusicMap();musRoomsEl.innerHTML='';
  for(const rn of MROOMS){const row=document.createElement('div');row.className='row';const lab=document.createElement('label');lab.textContent=rn;const sel=document.createElement('select');
