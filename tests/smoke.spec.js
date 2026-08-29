@@ -46,7 +46,7 @@ test('floor 1: correct pillow unlocks door, wrong pillow costs a petal', async (
   await skip(page);
   const truth = await page.evaluate(() => BB.roomClaim().truth);
   const wrong = truth === 'left' ? 'right' : 'left';
-  const pos = { left: [70, 84], right: [234, 84] };
+  const pos = { left: [67, 84], right: [244, 84] };   // pillow hotspots live on the Figma beds now
   await useAt(page, ...pos[wrong]);
   await page.waitForFunction(() => BB.state.petals === 2);
   await skip(page);
@@ -92,7 +92,7 @@ test('scenario "fight": wrong pick on floor 1 drops into a 2-doll punishment roo
   await skip(page);
   const truth = await page.evaluate(() => BB.roomClaim().truth);
   const wrong = truth === 'left' ? 'right' : 'left';
-  await useAt(page, ...(wrong === 'left' ? [70, 84] : [234, 84]));
+  await useAt(page, ...(wrong === 'left' ? [67, 84] : [244, 84]));
   await page.waitForFunction(() => BB.state.petals === 2);
   await skip(page);
   await waitRoom(page, 'dollroom');
@@ -223,7 +223,7 @@ test('scenario B: a wrong pillow costs a petal but stays on the floor — no pun
   await waitRoom(page, 'floor1');
   await skip(page);
   const truth = await page.evaluate(() => BB.roomClaim().truth);
-  const pos = { left: [70, 84], right: [234, 84] };
+  const pos = { left: [67, 84], right: [244, 84] };   // pillow hotspots live on the Figma beds now
   await useAt(page, ...pos[truth === 'left' ? 'right' : 'left']); // wrong on purpose
   await page.waitForFunction(() => BB.state.petals === 2);
   await skip(page);
@@ -235,12 +235,38 @@ test('key pickup: soft fx spawns, HUD swaps the em-dash for the pixel key', asyn
   await waitRoom(page, 'floor1');
   await skip(page);
   const truth = await page.evaluate(() => BB.roomClaim().truth);
-  await useAt(page, ...(truth === 'left' ? [70, 84] : [234, 84]));
+  await useAt(page, ...(truth === 'left' ? [67, 84] : [244, 84]));
   await page.waitForFunction(() => BB.state.key === true);
   expect(await page.evaluate(() => BB.fxCount())).toBeGreaterThan(0);   // floating key
   expect(await page.evaluate(() => BB.state.glow > 0)).toBe(true);      // pale glow, not red scare
   expect(await page.evaluate(() => BB.state.scare > 0)).toBe(false);
   expect(await page.locator('#hudKey canvas').count()).toBe(1);         // pixel icon, no emoji
+});
+
+test('floor 1 wears the Figma bedroom: beds + plush deco, standing Boo, hidden pillow hotspots', async ({ page }) => {
+  await page.goto(url + '?seed=1&room=floor1&mode=designer');
+  await waitRoom(page, 'floor1');
+  const r = await page.evaluate(() => ({
+    deco: BB.state.room.deco.map(d => d.k),
+    bunny: (({ x, y, pose }) => ({ x, y, pose }))(BB.state.room.items.find(i => i.id === 'bunnyNpc')),
+    pillowsHidden: BB.state.room.items.filter(i => i.pillow).map(i => !!i.hidden),
+  }));
+  expect(r.deco).toEqual(['bedBR', 'bedBR', 'plushLie']);
+  expect(r.bunny).toEqual({ x: 100, y: 20, pose: 'stand' }); // Figma Horror room 1, re-seated in the purple wall box
+  expect(r.pillowsHidden).toEqual([true, true]);
+});
+
+test('ignoring Boo can earn the disappointed face on its next line', async ({ page }) => {
+  await page.goto(url + '?seed=3&skipIntro=1&lie1=1&mode=designer');
+  await waitRoom(page, 'floor1');
+  await skip(page);
+  const truth = await page.evaluate(() => BB.roomClaim().truth); // lie1=1: Boo names the other pillow
+  const pos = { left: [67, 84], right: [244, 84] };
+  await useAt(page, ...pos[truth]); // doubt the claim, correctly → followed=false → Boo sulks
+  await page.waitForFunction(() => BB.dialogOpen());
+  await skip(page); // "A small brass key..." (narrator)
+  await page.waitForFunction(() => BB.dialogInfo() && BB.dialogInfo().speaker === 'bunny');
+  expect(await page.evaluate(() => BB.dialogInfo().mood)).toBe('sad'); // seed 3: first sulk roll 0.288 < 0.6 — deterministic
 });
 
 test('end card: ending shows stats screen, Space returns to the title', async ({ page }) => {
@@ -352,10 +378,10 @@ test('editor v2: per-item interact radius override changes what the player can r
   await page.goto(url + '?seed=3&skipIntro=1&lie1=1');
   await waitRoom(page, 'floor1');
   await skip(page);
-  // stand well outside the default radius (reach 14 + 8 = 22 from the pillow centre)
+  // stand well outside the default radius (reach 14 + 19.5 = 33.5 from the pillow centre) — below it, clear of Boo by the door
   const far = await page.evaluate(() => {
     const it = BB.state.room.items.find(i => i.id === 'left');
-    BB.teleport(it.x + it.w / 2 + 35 - 5, it.y + it.h / 2 - 7); BB.press('KeyZ');
+    BB.teleport(it.x + it.w / 2 - 5, it.y + it.h / 2 + 40 - 7); BB.press('KeyZ');
     return BB.dialogOpen();
   });
   await page.waitForTimeout(80);

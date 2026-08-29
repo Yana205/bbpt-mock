@@ -42,10 +42,12 @@ Title card (friends' baked start-screen art) → tea party (Figma room, tell fir
 2. **Gotcha**: Figma metadata reports *flipped* layers at their transform origin, not visual bounds (visual x = x − width). Verify against the frame export; the tea room was diffed to 0 differing pixels.
 3. New art: drop PNGs into `art/runtime/` (camelCase filename = `ART` key) + `npm run assets`. Sources archived in `art/friends/` (incl. `figma-room/`).
 4. Cropped-fill layers (like the dialog portraits) export via node *screenshots*, not raw fills.
-5. Dialog boxes: `teaBox` (288×47 at 16,125) + portraits `portraitVivi/Mara/Bunny/Hero` (= Figma Page 1 enemy1/enemy2/bunnydoll/char_ref portraits) — **all rooms** draw dialogs in-canvas (`drawDialog`); the DOM box is removed. Speakers map via `DLGPORT` (unknown/narrator → hero); to add a character, add its portrait PNG + a `DLGPORT` entry.
+5. Dialog boxes: one 288×47 slot at 16,125, two skins — tea party: `teaBox` + portraits `portraitVivi/Mara/Bunny/Hero` (Figma Page 1); horror rooms: `horrorBox` (Page 2 box2) + Boo heads `booReg/booEar/booSad` (Page 2 `textbox-bunnychar-*` sliced 1:1 from the frame export, bg keyed out). The glitch tell = earup + red + shiver; sulk = disappointed when ignored. All rooms draw dialogs in-canvas (`drawDialog`); the DOM box is removed. Speakers map via `DLGPORT` (unknown/narrator → hero); to add a character, add its portrait PNG + a `DLGPORT` entry.
 
 ## Asset & license inventory
 - **Friends' art** (tea room, hero, girls, plush, text boxes, portraits): yours — from the BB Figma file.
+- **Horror sprites** (Boo frames, plush BUNNY1, box2, side-walk girl): friends' art, sources in `Downloads/horror-room` + BB Figma Page 2.
+- **Beds** (`bedBR`): Bitglow "pixelinterior_BR" pack — licensed for use in the project, no redistribution of the file itself; credit "Bitglow" appreciated (add to itch page).
 - **Music (embedded m4a)**: musicbox (Liecio/Pixabay, no credit), drone (qubodup, CC-BY 3.0), comeplay/ossuary/deepnoise (Kevin MacLeod/incompetech, CC-BY, trimmed ~95s).
 - **Fonts**: Silkscreen + Atkinson Hyperlegible (OFL), self-hosted.
 - **SFX**: WebAudio synth, no samples.
