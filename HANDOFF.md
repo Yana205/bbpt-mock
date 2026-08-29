@@ -31,7 +31,7 @@ npm run build:itch
 `src/page.html` is the only source. Never hand-edit the `/*ART*/ /*AUDIO*/ /*FONTS*/` marker blocks.
 
 ## The game (current state)
-Title card → tea party (Figma room, tell fires on the word "Promise"; **every** dialog game-wide renders in-canvas in the Figma text box with character portraits — no DOM textbox) → floors 1–3 (teach / contradict / betray; purple-remapped hero carries the bunny) → doll playroom (dolls sit asleep, stand after Boo's line) → two endings gated on 3 torn notes. Interact cue = pulsing rectangle around the nearest usable object; diagonal movement works; soft typing blips (SFX synth — **no tell SFX ever**, the tell stays visual-only).
+Title card (friends' baked start-screen art) → tea party (Figma room, tell fires on the word "Promise"; **every** dialog game-wide renders in-canvas in the Figma text box with character portraits — no DOM textbox) → floors 1–3 (teach / contradict / betray; purple-remapped hero carries the bunny) → doll playroom (dolls sit asleep, stand after Boo's line) → two endings gated on 3 torn notes. Interact cue = pulsing rectangle around the nearest usable object; diagonal movement works; soft typing blips (SFX synth — **no tell SFX ever**, the tell stays visual-only).
 
 ## Editing workflow
 - **EDIT mode keeps only what's needed day-to-day**: click-select + drag-move (inspector shows X/Y etc., corner grip resizes) and the **♫ MUSIC** window (global + per-room track from 5 embedded loops + uploads, volume, previews). Everything else (cards, sprite uploads, palette, tells) still lives in the rail, collapsed — deeper edits go through Claude Code in this repo.

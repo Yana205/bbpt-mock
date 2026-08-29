@@ -390,14 +390,15 @@ test('tea party is strictly 1:1 with the Figma frame — teaScale params/leftove
   expect(r.spawn).toEqual({ x: 31, y: 121 });
 });
 
-test('cards are config-driven: title text/color edits render without errors', async ({ page }) => {
+test('title draws the baked start-screen card; end card stays config-driven', async ({ page }) => {
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
-  await page.goto(url + '?seed=1&titleText=HELLO%20BOO&titleColor=%239a86c4&titleFont=Atkinson%20Hyperlegible&mode=designer');
+  await page.goto(url + '?seed=1&endTagline=SEE%20YOU%20SOON&titleFont=Atkinson%20Hyperlegible&mode=designer');
   await waitRoom(page, 'title');
-  expect(await page.evaluate(() => BB.cfg.titleText)).toBe('HELLO BOO');
-  expect(await page.locator('[data-cfg="titleText"]').inputValue()).toBe('HELLO BOO');
-  await page.waitForTimeout(300); // let a few title frames draw with the custom font/color
+  expect(await page.evaluate(() => !!(BB && document.querySelector('#game')))).toBe(true);
+  expect(await page.evaluate(() => BB.cfg.endTagline)).toBe('SEE YOU SOON');
+  expect(await page.locator('[data-cfg="endTagline"]').inputValue()).toBe('SEE YOU SOON');
+  await page.waitForTimeout(300); // let a few title frames draw the baked card + blink
   expect(errors).toEqual([]);
 });
 
@@ -414,21 +415,12 @@ test('horror floors: the purple-remapped charRef stands in for the rect player (
   expect(errors).toEqual([]);
 });
 
-test('title card: text/bunny are selectable card elements — inspector edits, drag moves', async ({ page }) => {
+test('title is baked art (no card elements); the end card keeps its editable tagline', async ({ page }) => {
   await page.goto(url + '?seed=1&room=title&mode=designer');
   await waitRoom(page, 'title');
-  // entering a card screen in EDIT auto-opens the inspector with a hint
-  expect(await page.locator('#insWin').getAttribute('class')).not.toContain('hidden');
-  expect(await page.locator('#insBody').textContent()).toContain('card screen');
-  expect(await page.evaluate(() => BB.editor.select('card', 'titleText'))).toBe(true);
-  expect(await page.locator('#insBody').textContent()).toContain('TITLE TEXT');
-  await page.evaluate(() => BB.editor.move(0, 80)); // text is centered: only Y moves
-  expect(await page.evaluate(() => BB.cfg.titleY)).toBe(80);
-  await page.evaluate(() => BB.editor.undo());
-  expect(await page.evaluate(() => BB.cfg.titleY)).toBe(62);
-  expect(await page.evaluate(() => BB.editor.select('card', 'bunny'))).toBe(true);
-  await page.evaluate(() => BB.editor.move(150, 90));
-  expect(await page.evaluate(() => [BB.cfg.bunnyX, BB.cfg.bunnyY])).toEqual([150, 90]);
+  // the title has nothing to select any more — its text/art live in titleCard.png
+  expect(await page.evaluate(() => BB.editor.select('card', 'titleText'))).toBe(false);
+  expect(await page.evaluate(() => BB.editor.select('card', 'bunny'))).toBe(false);
 });
 
 test('PROD mode: production preview shows the release view with a way back', async ({ page }) => {
