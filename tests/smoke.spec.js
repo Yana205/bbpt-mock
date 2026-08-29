@@ -435,3 +435,24 @@ test('title card: text/bunny are selectable card elements — inspector edits, d
   await page.evaluate(() => BB.editor.move(150, 90));
   expect(await page.evaluate(() => [BB.cfg.bunnyX, BB.cfg.bunnyY])).toEqual([150, 90]);
 });
+
+test('PROD mode: production preview shows the release view with a way back', async ({ page }) => {
+  await page.goto(url + '?seed=1&room=floor1&skipIntro=1&mode=designer');
+  await waitRoom(page, 'floor1');
+  await page.click('#mProd');
+  expect(await page.locator('#app').getAttribute('class')).toContain('rel');   // no testbed chrome
+  expect(await page.locator('#app').getAttribute('class')).toContain('norail');
+  expect(await page.locator('#prodExit').getAttribute('class')).not.toContain('hidden');
+  await page.locator('#game').click();          // focus the canvas
+  await page.keyboard.press('t');               // T exits back to EDIT
+  await page.waitForFunction(() => BB.cfg.mode === 'designer');
+  expect(await page.locator('#app').getAttribute('class')).not.toContain('rel');
+  expect(await page.locator('#prodExit').getAttribute('class')).toContain('hidden');
+  // T from EDIT enters the player view too
+  await page.keyboard.press('t');
+  await page.waitForFunction(() => BB.prod.on());
+  expect(await page.locator('#app').getAttribute('class')).toContain('rel');
+  await page.click('#prodExit');                // the corner chip also exits
+  await page.waitForFunction(() => !BB.prod.on());
+  expect(await page.evaluate(() => BB.cfg.mode)).toBe('designer');
+});

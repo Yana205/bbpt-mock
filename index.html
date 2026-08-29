@@ -100,6 +100,10 @@ canvas{width:960px;max-width:100%;aspect-ratio:16/9;image-rendering:pixelated;im
 #hudKey.pop{animation:keypop .45s steps(4)}
 @keyframes keypop{35%{transform:scale(1.7)}}
 #hudKey{display:inline-block}
+/* production preview: a discreet way back that the real release build never shows */
+.prodexit{position:fixed;right:14px;bottom:14px;z-index:50;opacity:.5}
+.prodexit:hover{opacity:1}
+.prodexit.hidden{display:none}
 /* --- editor chrome (EDIT mode only; never in playtest/release) --- */
 .edbar{display:none;width:960px;max-width:100%;font-family:var(--fd);font-size:11px;gap:6px;flex-wrap:wrap;align-items:center}
 .app:not(.pt) .edbar{display:flex}
@@ -261,7 +265,7 @@ canvas{width:960px;max-width:100%;aspect-ratio:16/9;image-rendering:pixelated;im
 <main class="stage">
   <div class="topbar">
     <div class="tabs" id="tabs"></div>
-    <div class="modes"><button id="mPlay" title="Tester view: rail hidden, truths hidden">▶ PLAY</button><button id="mEdit" title="Designer view: rail + truths + flow">✎ EDIT</button></div>
+    <div class="modes"><button id="mPlay" title="Tester view: rail hidden, truths hidden">▶ PLAY</button><button id="mEdit" title="Designer view: rail + truths + flow">✎ EDIT</button><button id="mProd" title="Production view — exactly what a player sees, no testbed chrome (T toggles)">◉ PROD</button></div>
   </div>
   <div class="edbar">
     <button id="bInsp">▣ INSPECTOR</button>
@@ -273,6 +277,7 @@ canvas{width:960px;max-width:100%;aspect-ratio:16/9;image-rendering:pixelated;im
   </div>
   <div class="hud"><div>ROOM <b id="hudRoom">—</b></div><div class="petals"><span id="hudPetals"></span></div><div>KEY <b id="hudKey">—</b></div><div>NOTES <b id="hudNotes">0/3</b></div><div><button id="bSound" title="Sound on/off (M)">SOUND ON</button> <span class="pill" id="hudMode">PLAYTEST</span></div></div>
   <canvas id="game" width="320" height="180"></canvas>
+  <button id="prodExit" class="prodexit hidden" title="Leave the player view">✎ EXIT PLAYER VIEW · T</button>
   <div class="dlg hidden" id="dlg">
     <canvas id="portrait" width="64" height="64"></canvas>
     <div><div class="who" id="who"></div><div class="txt" id="txt"></div></div>
@@ -344,7 +349,12 @@ function syncInputs(){inputs.forEach(i=>{const k=i.dataset.cfg;if(i.type==='chec
 function saveCfg(){try{const o={...CFG};delete o.release;localStorage.setItem('bb.cfg3',JSON.stringify(o));}catch(e){}}
 inputs.forEach(i=>i.addEventListener('input',()=>{const k=i.dataset.cfg;CFG[k]=i.type==='checkbox'?i.checked:((i.type==='number'||i.type==='range')?parseFloat(i.value):i.value);saveCfg();if(k==='mode')applyMode();if(/^(lie|tell|wrong|note2|falseTell|tellDelayMs|combat|worldTells)/.test(k)&&CFG.scenario!=='custom'){CFG.scenario='custom';saveCfg();syncScenario();}ruleLine();if(k==='petals'){G.petals=Math.min(G.petals,CFG.petals);hud();}if(k==='musVol'&&MUS.el)MUS.el.volume=musVolFor(MUS.track);if(k==='teaScale'&&G.room&&G.room.name==='teaparty')goto('teaparty');}));
 const app=document.getElementById('app');
-function applyMode(){const d=CFG.mode==='designer';app.classList.toggle('pt',!d);app.classList.toggle('rel',!!CFG.release&&!d);document.getElementById('mPlay').className=d?'':'cur';document.getElementById('mEdit').className=d?'cur edit':'';document.getElementById('hudMode').textContent=d?'DESIGNER':'PLAYTEST';document.getElementById('hudMode').className='pill'+(d?' designer':'');if(!d){document.getElementById('insWin').classList.add('hidden');document.getElementById('musWin').classList.add('hidden');}renderLog();}
+/* PROD = session-only production preview: the release view (no testbed chrome), with a discreet exit the real itch build never has */
+let PROD=false,prodBack='designer';
+function applyMode(){const d=CFG.mode==='designer';app.classList.toggle('pt',!d);app.classList.toggle('rel',(!!CFG.release||PROD)&&!d);
+ document.getElementById('prodExit').classList.toggle('hidden',!(PROD&&!CFG.release&&!d));
+ document.getElementById('mProd').className=PROD&&!d?'cur':'';
+ document.getElementById('mPlay').className=d||PROD?'':'cur';document.getElementById('mEdit').className=d?'cur edit':'';document.getElementById('hudMode').textContent=d?'DESIGNER':'PLAYTEST';document.getElementById('hudMode').className='pill'+(d?' designer':'');if(!d){document.getElementById('insWin').classList.add('hidden');document.getElementById('musWin').classList.add('hidden');}renderLog();}
 addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT')return;if(CFG.sound){audioCtx();musicSync();}if(e.code==='KeyM'){setSound(!CFG.sound);return;}if(e.code==='Backquote'&&!CFG.release){app.classList.toggle('norail');e.preventDefault();}});
 document.getElementById('bDefaults').onclick=()=>{CFG={...DEF};syncInputs();try{localStorage.removeItem('bb.cfg3')}catch(e){};log('config → factory (approved flow)','sys');};
 document.getElementById('bCopy').onclick=()=>copyText(JSON.stringify(CFG,null,2),'config copied');
@@ -489,7 +499,7 @@ function hud(){document.getElementById('hudRoom').textContent=G.room?G.room.name
 const keys={};let actPressed=false,atkPressed=false,escPressed=false;
 const cv=document.getElementById('game');cv.tabIndex=0;
 addEventListener('keydown',e=>{if(e.repeat)return;if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT')return;
- if(e.code==='KeyT'&&!CFG.release&&(CFG.mode==='designer'||ED.testFlip)){edTestFlip();return;}
+ if(e.code==='KeyT'&&!CFG.release&&(CFG.mode==='designer'||PROD)){edTestFlip();return;}
  if(CFG.mode==='designer'){
   if((e.ctrlKey||e.metaKey)&&e.code==='KeyZ'){undoEdit();e.preventDefault();return;}
   if(ED.sel&&e.shiftKey&&/^Arrow/.test(e.code)){pushUndo();moveSel(ED.sel.o.x+(e.code==='ArrowLeft'?-1:e.code==='ArrowRight'?1:0),ED.sel.o.y+(e.code==='ArrowUp'?-1:e.code==='ArrowDown'?1:0));e.preventDefault();return;}
@@ -533,7 +543,11 @@ const tabsEl=document.getElementById('tabs');
 ['teaparty','floor1','floor2','dollroom','floor3','ending','lab'].forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=k;roomSel.appendChild(o);const b=document.createElement('button');b.className='tab';b.dataset.room=k;b.textContent=TABN[k];b.onclick=()=>{if(k==='lab')reseed();goto(k);};tabsEl.appendChild(b);});
 function syncTabs(){[...tabsEl.children].forEach(b=>b.classList.toggle('cur',G.room&&b.dataset.room===G.room.name));}
 function setMode(m){CFG.mode=m;saveCfg();syncInputs();app.classList.toggle('norail',m==='playtest');}
-document.getElementById('mPlay').onclick=()=>setMode('playtest');document.getElementById('mEdit').onclick=()=>setMode('designer');
+document.getElementById('mPlay').onclick=()=>{PROD=false;setMode('playtest');};document.getElementById('mEdit').onclick=()=>{PROD=false;setMode('designer');};
+function enterProd(){if(CFG.release)return;prodBack=CFG.mode;PROD=true;log('production view — T or the corner button returns','sys');setMode('playtest');}
+function exitProd(){PROD=false;setMode(prodBack==='designer'?'designer':'playtest');}
+document.getElementById('mProd').onclick=()=>enterProd();
+document.getElementById('prodExit').onclick=()=>exitProd();
 roomSel.onchange=()=>goto(roomSel.value);
 document.getElementById('bReset').onclick=()=>resetRun();
 document.getElementById('bLab').onclick=()=>{reseed();goto('lab');};
@@ -662,7 +676,7 @@ document.getElementById('bMusWin').onclick=()=>{musWinSync();musWin.classList.to
 document.getElementById('bSnap').onclick=e=>{ED.snap=!ED.snap;e.target.classList.toggle('on',ED.snap);};
 document.getElementById('bHitbox').onclick=e=>{ED.hit=!ED.hit;e.target.classList.toggle('on',ED.hit);};
 document.getElementById('bUndoE').onclick=()=>undoEdit();
-function edTestFlip(){if(CFG.mode==='designer'){ED.testFlip=true;setMode('playtest');log('feeling it as a player — T returns to EDIT','sys');}else if(ED.testFlip){ED.testFlip=false;setMode('designer');}}
+function edTestFlip(){if(PROD){exitProd();return;}if(CFG.mode==='designer')enterProd();}
 document.getElementById('cLayCopy').onclick=()=>{const r=G.room;if(!r)return;
  const out={room:r.name,...(r.bigChar?{teaScale:CFG.teaScale}:{}),...(roomMusicMap()[r.name]?{music:roomMusicMap()[r.name]}:{}),
   deco:r.deco?r.deco.map(({k,x,y,flip,dress,s})=>({k,x,y,...(flip?{flip:1}:{}),...(dress?{dress}:{}),...(s&&s!==1?{s}:{})})):undefined,
@@ -985,6 +999,7 @@ window.BB={cfg:CFG,state:G,session:S,goto,resetRun,summary,exportSession,scenari
  teleport:(x,y)=>{G.player.x=x;G.player.y=y;},
  roomClaim:()=>G.room?.claim||null,
  audio:{on:()=>CFG.sound,track:()=>MUS.track,set:setSound},
+ prod:{enter:enterProd,exit:exitProd,on:()=>PROD},
  music:{map:roomMusicMap,set:(room,t)=>{const m=roomMusicMap();if(t)m[room]=t;else delete m[room];CFG.roomMusic=Object.keys(m).length?JSON.stringify(m):'';saveCfg();musicSync();}},
  editor:{select:(t,id)=>{const room=G.room;if(!room)return false;const o=t==='deco'?(room.deco||[]).find(d=>d._id===id):t==='card'?(room.cardEls||[]).find(c=>c.id===id):(t==='item'?room.items:room.doors).find(x=>x.id===id);ED.sel=o?{t,o}:null;selSync();return!!o;},
   selected:()=>ED.sel?{t:ED.sel.t,id:ED.sel.o.id||ED.sel.o._id,x:ED.sel.o.x,y:ED.sel.o.y}:null,
