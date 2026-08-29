@@ -500,3 +500,15 @@ test('interact picks the nearest hot item — standing at the cup drinks the cup
   await skip(page);
   await waitRoom(page, 'floor1'); // drinking the cup sends you to the basement — Vivi's greeting would not
 });
+
+test('tea party dialog uses the in-canvas Figma box; floors keep the DOM dialog', async ({ page }) => {
+  await page.goto(url + '?seed=1&room=teaparty');
+  await waitRoom(page, 'teaparty');
+  await page.waitForFunction(() => BB.dialogOpen());
+  expect(await page.locator('#dlg').getAttribute('class')).toContain('hidden'); // DOM box stays hidden
+  await skip(page);
+  await page.goto(url + '?seed=1&skipIntro=1');
+  await waitRoom(page, 'floor1');
+  await page.waitForFunction(() => BB.dialogOpen());
+  expect(await page.locator('#dlg').getAttribute('class')).not.toContain('hidden'); // classic dialog elsewhere
+});
