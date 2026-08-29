@@ -1,0 +1,22 @@
+[
+ {
+  "family": "Atkinson Hyperlegible",
+  "weight": 400,
+  "file": "AtkinsonHyperlegible-400.woff2"
+ },
+ {
+  "family": "Atkinson Hyperlegible",
+  "weight": 700,
+  "file": "AtkinsonHyperlegible-700.woff2"
+ },
+ {
+  "family": "Silkscreen",
+  "weight": 400,
+  "file": "Silkscreen-400.woff2"
+ },
+ {
+  "family": "Silkscreen",
+  "weight": 700,
+  "file": "Silkscreen-700.woff2"
+ }
+]

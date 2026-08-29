@@ -18,6 +18,8 @@ test('boots into tea party with 3 petals and a hidden log in playtest mode', asy
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
   await page.goto(url);
+  await waitRoom(page, 'title');           // boot lands on the title card
+  await page.evaluate(() => BB.press('Space'));
   await waitRoom(page, 'teaparty');
   expect(await page.evaluate(() => BB.state.petals)).toBe(3);
   expect(await page.locator('#hudMode').textContent()).toBe('PLAYTEST');
@@ -226,8 +228,60 @@ test('scenario B: a wrong pillow costs a petal but stays on the floor — no pun
   expect(await page.evaluate(() => BB.state.room.name)).toBe('floor1'); // still here, no doll room
 });
 
+test('key pickup: soft fx spawns, HUD swaps the em-dash for the pixel key', async ({ page }) => {
+  await page.goto(url + '?seed=3&skipIntro=1&lie1=1');
+  await waitRoom(page, 'floor1');
+  await skip(page);
+  const truth = await page.evaluate(() => BB.roomClaim().truth);
+  await useAt(page, ...(truth === 'left' ? [70, 84] : [234, 84]));
+  await page.waitForFunction(() => BB.state.key === true);
+  expect(await page.evaluate(() => BB.fxCount())).toBeGreaterThan(0);   // floating key
+  expect(await page.evaluate(() => BB.state.glow > 0)).toBe(true);      // pale glow, not red scare
+  expect(await page.evaluate(() => BB.state.scare > 0)).toBe(false);
+  expect(await page.locator('#hudKey canvas').count()).toBe(1);         // pixel icon, no emoji
+});
+
+test('end card: ending shows stats screen, Space returns to the title', async ({ page }) => {
+  await page.goto(url + '?seed=6&room=floor3&mode=designer&lie3=0&tell3=0');
+  await waitRoom(page, 'floor3');
+  await skip(page);
+  const truth = await page.evaluate(() => BB.roomClaim().truth);
+  await useAt(page, ...(truth === 'door' ? [62, 30] : [244, 30]));
+  await waitRoom(page, 'ending');
+  await skip(page);
+  await waitRoom(page, 'endcard');
+  await page.evaluate(() => BB.press('Space'));
+  await waitRoom(page, 'title');
+});
+
+test('release mode: testbed chrome is gone, sound button stays', async ({ page }) => {
+  await page.goto(url + '?release=1&seed=1');
+  await waitRoom(page, 'title');
+  expect(await page.locator('.topbar').isVisible()).toBe(false);
+  expect(await page.locator('#hudMode').isVisible()).toBe(false);
+  expect(await page.locator('#bSound').isVisible()).toBe(true);
+  // backtick must not reveal the admin rail in release
+  await page.keyboard.press('Backquote');
+  expect(await page.locator('#app').getAttribute('class')).toContain('norail');
+});
+
+test('audio: music follows the room (music box up top, drone in the house), M toggles sound', async ({ page }) => {
+  await page.goto(url + '?seed=1');
+  await waitRoom(page, 'title');
+  expect(await page.evaluate(() => BB.audio.track())).toBe('musicbox');
+  await page.evaluate(() => BB.goto('floor1'));
+  await waitRoom(page, 'floor1');
+  expect(await page.evaluate(() => BB.audio.track())).toBe('drone');
+  await page.keyboard.press('m');
+  await page.waitForFunction(() => !BB.audio.on());
+  expect(await page.evaluate(() => BB.audio.track())).toBe(null);
+  expect(await page.locator('#bSound').textContent()).toBe('SOUND OFF');
+});
+
 test('top bar: room tabs switch rooms, PLAY/EDIT toggles the rail', async ({ page }) => {
   await page.goto(url + '?seed=1&mode=designer');
+  await waitRoom(page, 'title');
+  await page.evaluate(() => BB.press('Space'));
   await waitRoom(page, 'teaparty');
   await page.click('.tab[data-room="floor2"]');
   await waitRoom(page, 'floor2');

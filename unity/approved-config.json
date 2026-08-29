@@ -4,18 +4,19 @@
     "approvedAt": "2026-08-28",
     "source": "bbpt-mock web testbed, candidate B (scenario 'fight')",
     "decisions": {
-      "flow": "tea party → guest room (pillows) → gallery (rabbit/girl doors + wall scratch) → mandatory doll playroom → mirror room (stairs vs small door) → ending",
+      "flow": "tea party \u2192 guest room (pillows) \u2192 gallery (rabbit/girl doors + wall scratch) \u2192 mandatory doll playroom \u2192 mirror room (stairs vs small door) \u2192 ending",
       "wrongPick": "costs 1 petal, stay on the floor, same claim (no punishment rooms)",
       "combat": "only the mandatory doll playroom after floor 2; flee via exit is free",
       "zeroPetals": "restart current floor, petals refill, claims re-roll",
       "teaParty": "keep full length, Esc skips",
-      "firstTell": "first tell of a run lingers (firstTellMs) — visual-only teach, no tutorial text"
+      "firstTell": "first tell of a run lingers (firstTellMs 450ms) \u2014 visual-only teach, no tutorial text",
+      "tellSpeed": "2026-08-29: tell shortened for submission \u2014 the flip is a flick, not a hold (tellMs 350\u2192180, firstTellMs 900\u2192450). The player is smart."
     }
   },
   "tells": {
     "tellType": "faceflip",
-    "tellMs": 350,
-    "firstTellMs": 900,
+    "tellMs": 180,
+    "firstTellMs": 450,
     "tellDelayMs": 0,
     "falseTell": 0,
     "worldTells": true,
@@ -23,12 +24,33 @@
     "tellInWorld": false
   },
   "floors": {
-    "teaParty": { "lie": 1.0, "tell": true, "wrong": "none" },
-    "floor1": { "lie": 1.0, "tell": true, "wrong": "petal" },
-    "floor2": { "lie": 0.5, "tell": true, "wrong": "petal", "wallNote": "contradict" },
-    "floor3": { "lie": 1.0, "tell": false, "wrong": "petal", "mirrorTell": true }
+    "teaParty": {
+      "lie": 1.0,
+      "tell": true,
+      "wrong": "none"
+    },
+    "floor1": {
+      "lie": 1.0,
+      "tell": true,
+      "wrong": "petal"
+    },
+    "floor2": {
+      "lie": 0.5,
+      "tell": true,
+      "wrong": "petal",
+      "wallNote": "contradict"
+    },
+    "floor3": {
+      "lie": 1.0,
+      "tell": false,
+      "wrong": "petal",
+      "mirrorTell": true
+    }
   },
-  "petals": { "petals": 3, "scareMs": 600 },
+  "petals": {
+    "petals": 3,
+    "scareMs": 600
+  },
   "combat": {
     "combat": true,
     "dolls": 3,
@@ -42,7 +64,11 @@
     "hurtCd": 900,
     "flee": "free"
   },
-  "player": { "speed": 60, "reach": 14, "textSpeed": 40 },
+  "player": {
+    "speed": 60,
+    "reach": 14,
+    "textSpeed": 40
+  },
   "palette": {
     "cInk": "#0e0a14",
     "cPlum": "#241a3a",

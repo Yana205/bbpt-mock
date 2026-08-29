@@ -3,6 +3,8 @@
   "private": true,
   "scripts": {
     "build": "node build.js",
+    "assets": "node tools/build-assets.mjs",
+    "build:itch": "node build.js itch",
     "test": "playwright test",
     "serve": "npx serve ."
   },
