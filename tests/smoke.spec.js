@@ -501,6 +501,16 @@ test('interact picks the nearest hot item — standing at the cup drinks the cup
   await waitRoom(page, 'floor1'); // drinking the cup sends you to the basement — Vivi's greeting would not
 });
 
+test('tea party: the sprite HEAD reaches the cups — standing in FRONT of the table drinks, no need to walk onto it', async ({ page }) => {
+  await page.goto(url + '?seed=1&room=teaparty');
+  await waitRoom(page, 'teaparty');
+  await skip(page);
+  await useAt(page, 107, 112); // feet well below the table edge; only the head is near CUP L
+  await page.waitForFunction(() => BB.dialogOpen());
+  await skip(page);
+  await waitRoom(page, 'floor1'); // the drink fired
+});
+
 test('every dialog renders in-canvas with the Figma box — the DOM textbox is gone', async ({ page }) => {
   await page.goto(url + '?seed=1&room=teaparty');
   await waitRoom(page, 'teaparty');
