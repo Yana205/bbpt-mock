@@ -490,3 +490,13 @@ test('tea party: the tell fires on the word "Promise", not at the start of the l
   expect(await page.evaluate(() => BB.session.events.some(e => e.type === 'tell'))).toBe(false);
   await page.waitForFunction(() => BB.session.events.some(e => e.type === 'tell'), null, { timeout: 4000 });
 });
+
+test('interact picks the nearest hot item — standing at the cup drinks the cup, not Vivi', async ({ page }) => {
+  await page.goto(url + '?seed=1&room=teaparty');
+  await waitRoom(page, 'teaparty');
+  await skip(page);
+  await useAt(page, 112, 94); // inside both the cup's and Vivi's reach
+  await page.waitForFunction(() => BB.dialogOpen());
+  await skip(page);
+  await waitRoom(page, 'floor1'); // drinking the cup sends you to the basement — Vivi's greeting would not
+});
