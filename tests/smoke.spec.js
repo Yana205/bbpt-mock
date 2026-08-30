@@ -629,12 +629,38 @@ test('floor 3 dressing: mirror-set deco, wordless mirror reveal, no key stamp un
   await skip(page);
   expect(await page.locator('#hudKey').isHidden()).toBe(true);   // no empty KEY slot, no room name — icons only
   const deco = await page.evaluate(() => BB.state.room.deco.map(d => d.k));
-  expect(deco).toEqual(expect.arrayContaining(['stairsArt', 'painting1', 'painting2', 'painting3']));
+  expect(deco).toContain('stairsArt');
+  expect(deco.join()).not.toContain('painting'); // the gallery moved down to floor 2
   await useAt(page, 70, 90);   // stand right up against the glass
   await page.waitForFunction(() => BB.dialogOpen());
   expect((await page.evaluate(() => BB.dialogInfo())).speaker).toBe('mirror');   // the reveal is visual: ears portrait, no caption
   await skip(page);
   expect(errors).toEqual([]);
+});
+
+test('floor 2 hangs the painting set moved down from floor 3', async ({ page }) => {
+  await page.goto(url + '?seed=1&room=floor2&mode=designer');
+  await waitRoom(page, 'floor2');
+  const deco = await page.evaluate(() => BB.state.room.deco.map(d => d.k));
+  expect(deco).toEqual(['painting1', 'painting1', 'painting3']); // painting2 is the interactive PAINTING item
+  expect(await page.evaluate(() => !!BB.state.room.items.find(i => i.id === 'note' && i.paint))).toBe(true);
+});
+
+test('floor 1: the little bunny is collectable and she carries it for the rest of the run', async ({ page }) => {
+  await page.goto(url + '?seed=1&room=floor1&mode=designer');
+  await waitRoom(page, 'floor1');
+  await skip(page);
+  expect(await page.evaluate(() => BB.state.room.deco.map(d => d.k))).toContain('plushLie');
+  await useAt(page, 235, 100); // the foot of ROSE's bed, where the plush lies
+  await page.waitForFunction(() => BB.state.plush === true);
+  expect(await page.evaluate(() => BB.state.room.deco.map(d => d.k))).not.toContain('plushLie'); // taken off the bed
+  await skip(page);
+  await page.evaluate(() => BB.goto('floor2'));
+  await waitRoom(page, 'floor2');
+  expect(await page.evaluate(() => BB.state.plush)).toBe(true); // idle now draws the heroBunny held pose
+  await page.evaluate(() => BB.goto('floor1'));
+  await waitRoom(page, 'floor1');
+  expect(await page.evaluate(() => BB.state.room.deco.map(d => d.k))).not.toContain('plushLie'); // never respawns
 });
 
 test('horror player: walking all four directions renders without errors', async ({ page }) => {

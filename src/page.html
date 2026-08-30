@@ -575,7 +575,7 @@ function fireTell(){const t=CFG.tellType;if(t==='none')return;const ms=(!G.tellS
 /* ---------- GAME STATE ---------- */
 const W=320,H=180,SS=3;   // SS: backing-store supersample — art still scales by an exact integer, but dialog text can rasterize at 16px Silkscreen (crisp 2× of its native 8) instead of a huge 24px-equivalent
 const ctx=cv.getContext('2d');ctx.imageSmoothingEnabled=false;
-const G={room:null,petals:CFG.petals,notes:new Set(),player:{x:160,y:120,w:10,h:14,dir:'down',face:'right',hurt:0},dolls:[],atk:{t:0,cd:0},scare:0,fade:0,candleFlicker:0,glow:0,fx:[],busy:false,returnTo:null,fromPunish:false,reveal:false,key:false,tellSeen:false};
+const G={room:null,petals:CFG.petals,notes:new Set(),player:{x:160,y:120,w:10,h:14,dir:'down',face:'right',hurt:0},dolls:[],atk:{t:0,cd:0},scare:0,fade:0,candleFlicker:0,glow:0,fx:[],busy:false,returnTo:null,fromPunish:false,reveal:false,key:false,plush:false,tellSeen:false};
 const R={};const order=['lab','teaparty','floor1','floor2','dollroom','floor3','ending'];
 const roomSel=document.getElementById('roomSel');const TABN={teaparty:'TEA PARTY',floor1:'FLOOR 1',floor2:'FLOOR 2',dollroom:'DOLLS',floor3:'FLOOR 3',ending:'ENDING',lab:'TELL LAB'};
 const tabsEl=document.getElementById('tabs');
@@ -594,7 +594,7 @@ document.getElementById('cPetal').onclick=()=>{G.petals=Math.min(CFG.petals,G.pe
 document.getElementById('cDolls').onclick=()=>{G.dolls=[];log('cheat: dolls cleared','sys');};
 document.getElementById('cUnlock').onclick=()=>{if(G.room)G.room.doors.forEach(d=>d.locked=false);log('cheat: doors unlocked','sys');};
 document.getElementById('cReveal').onclick=e=>{G.reveal=!G.reveal;e.target.classList.toggle('on',G.reveal);log(`cheat: reveal truth ${G.reveal?'on':'off'}`,'sys');};
-function resetRun(){reseed();G.petals=CFG.petals;G.key=false;G.notes.clear();G.fromPunish=false;G.returnTo=null;G.tellSeen=false;log(`— run reset (seed ${CFG.seed}) —`,'sys');rec('reset',{seed:CFG.seed});goto(CFG.skipIntro?'floor1':'teaparty');}
+function resetRun(){reseed();G.petals=CFG.petals;G.key=false;G.plush=false;G.notes.clear();G.fromPunish=false;G.returnTo=null;G.tellSeen=false;log(`— run reset (seed ${CFG.seed}) —`,'sys');rec('reset',{seed:CFG.seed});goto(CFG.skipIntro?'floor1':'teaparty');}
 
 function rect(x,y,w,h,c){ctx.fillStyle=c;ctx.fillRect(x,y,w,h);}
 /* draw a named ART sprite; s scales (nearest-neighbour, stays pixelated); flip mirrors horizontally */
@@ -834,9 +834,17 @@ mkRoom('teaparty',()=>{const r={spawn:{x:31,y:121},bounds:{x0:8,x1:312,y0:82,y1:
 mkRoom('floor1',()=>{ const r={spawn:{x:155,y:140},floor:1,rule:'TEACH THE BITE. Bunny claims which pillow hides the key. Right pillow → key → exit unlocks'};
  /* dressed from the friends' Figma "Horror room 1" (Page 2): two bedBR beds, the pink plush on ROSE's bed, Boo standing
     by the door — re-seated inside the purple wall box (Yana kept the horror bg purple, not the frame's maroon) */
- r.deco=[{k:'bedBR',x:48,y:64},{k:'bedBR',x:225,y:64},{k:'plushLie',x:225,y:80}];
+ r.deco=[{k:'bedBR',x:48,y:64},{k:'bedBR',x:225,y:64}];
+ /* the little bunny on ROSE's bed is collectable (2026-08-30, Yana): once she takes it she idles as heroBunny —
+    the same held pose the ending uses — for the rest of the run. Deco only while it hasn't been taken. */
+ if(!G.plush)r.deco.push({k:'plushLie',x:225,y:80});
  r.items=[
- {id:'left',x:52,y:70,w:39,h:14,hidden:true,label:'PILLOW L',kind:'pick',pillow:true,use:()=>lift('left')},{id:'right',x:229,y:70,w:39,h:14,hidden:true,label:'PILLOW R',kind:'pick',pillow:true,use:()=>lift('right')}];
+ {id:'left',x:52,y:70,w:39,h:14,hidden:true,label:'PILLOW L',kind:'pick',pillow:true,use:()=>lift('left')},{id:'right',x:229,y:70,w:39,h:14,hidden:true,label:'PILLOW R',kind:'pick',pillow:true,use:()=>lift('right')},
+ /* hotspot = the plush's lower half, so PILLOW R still wins the ranking when she stands by the pillow */
+ {id:'plush',x:227,y:98,w:27,h:12,reach:12,hidden:true,label:G.plush?'':'PLUSH',kind:'npc',got:G.plush,async use(){if(this.got)return;
+  this.got=true;G.plush=true;G.room.deco=G.room.deco.filter(d=>d.k!=='plushLie');this.label='';
+  sfx('note');log('plush taken → she carries it','ok');rec('plush',{room:'floor1'});
+  await say(['A little stuffed bunny, left on the bed.','You pick it up. It fits right under your arm.'],null);}}];
  r.doors=[{id:'exit',x:152,y:20,w:16,h:6,locked:true,to:'floor2',label:'EXIT (locked)'}];addNote(r,232,132,'...welcome tea for the new girl, Saturday...');/* half-hidden under ROSE's bed (flow doc) */r.candle={x:196,y:30};addBunny(r,100,20,'stand','It is waiting for you by the door. It does not blink.');
  async function lift(side){if(r.opened)return;if(!r.claim){await say(['A small bed. A name is stitched into the blanket. Not yours. Yet.'],null);return;}
   recDecision(side);
@@ -854,8 +862,11 @@ mkRoom('floor1',()=>{ const r={spawn:{x:155,y:140},floor:1,rule:'TEACH THE BITE.
 
 mkRoom('floor2',()=>{const r={spawn:{x:155,y:145},floor:2,rule:'CONTRADICT. Bunny names a door; the wall SCRATCH names one too. Whoever lies carries the tell. Right door → doll room'};
  r.doors=[{id:'rabbit',x:60,y:20,w:16,h:6,locked:false,to:'pick',label:'RABBIT DOOR'},{id:'girl',x:244,y:20,w:16,h:6,locked:false,to:'pick',label:'GIRL DOOR'}];r.candle={x:160,y:30};addBunny(r,206,60,'sit','It is lying under the scratched wall, looking at the writing. Or at you.');
+ /* the gallery is Yana's painting set (moved here from floor 3, 2026-08-30): painting1/painting3 hang as deco
+    (painting1 twice, flipped, to keep the four-frame corridor), the interactive PAINTING draws painting2 */
+ r.deco=[{k:'painting1',x:82,y:52},{k:'painting1',x:178,y:52,flip:true},{k:'painting3',x:212,y:52}];
  // note 2 hides behind the one painting whose girl has no bunny
- r.items.push({id:'note',x:112,y:56,w:12,h:10,label:'PAINTING',kind:'collect',paint:true,got:G.notes.has('floor2'),async use(){if(this.got)return;
+ r.items.push({id:'note',x:110,y:51,w:16,h:16,label:'PAINTING',kind:'collect',paint:true,got:G.notes.has('floor2'),async use(){if(this.got)return;
   await say(['A girl at tea. Something is wrong with this one.','She is the only girl without a bunny.'],null);
   G.notes.add('floor2');this.got=true;sfx('note');hud();log('note collected','ok');rec('note',{room:'floor2',total:G.notes.size});
   await say(['Behind the frame, a torn scrap.','"...she won\'t be missed, her mother works nights..."'],null);}});
@@ -868,9 +879,8 @@ mkRoom('floor2',()=>{const r={spawn:{x:155,y:145},floor:2,rule:'CONTRADICT. Bunn
   r.claim=rollClaim('floor2','bunny',['rabbit','girl'],LINE,CFG.lie2,CFG.tell2);
   await say(['A corridor of paintings. Girls at tea, each holding a bunny.','Someone scratched something into the wall between the doors.',r.claim.text],'bunny',{tellAt:r.claim.tell?2:-1});};
  r.draw=()=>{rect(40,20,240,140,CFG.cPlum);for(let y=28;y<150;y+=16)rect(44,y,2,8,CFG.cMid);for(let y=28;y<150;y+=16)rect(274,y,2,8,CFG.cMid);
-  // gallery: framed girls at tea, each with a bunny (the bunny-less one is the PAINTING item)
-  for(const px of [84,180,214]){rect(px,54,14,12,CFG.cMid);rect(px+1,55,12,10,CFG.cInk);rect(px+3,58,3,5,CFG.cPale);rect(px+8,59,2,3,CFG.cPale);rect(px+8,57,1,2,CFG.cPale);}
-  if(G.notes.has('floor2')){rect(112,56,14,12,CFG.cMid);rect(113,57,12,10,CFG.cInk);}};return r;});
+  // once the scrap is taken the painting stays on the wall (items with got=true skip drawItem)
+  if(G.notes.has('floor2'))spr('painting2',110,51);};return r;});
 
 /* Doll room: with combat off it is the GDD fallback — a "run to the door" room. */
 mkRoom('dollroom',(o)=>{const r={spawn:{x:155,y:145},punish:!!o.punish,rule:CFG.combat?`COMBAT. X or SPACE swings in the facing direction. Clear all dolls → exit unlocks${CFG.flee!=='none'?', or force the door'+(CFG.flee==='petal'?' (−1 petal)':''):''}. Contact = 1 petal.`:'Combat OFF (scenario). Walk to the exit. Turn on combat in the rail or pick the Combat scenario.'};
@@ -894,8 +904,8 @@ mkRoom('dollroom',(o)=>{const r={spawn:{x:155,y:145},punish:!!o.punish,rule:CFG.
 
 mkRoom('floor3',()=>{const r={spawn:{x:155,y:145},floor:3,rule:'BETRAY. No tell on the face — the MIRROR wears the wrong one. Small door behind the mirror → out'};
  r.doors=[{id:'door',x:60,y:20,w:12,h:6,locked:false,to:'pick',label:'SMALL DOOR'},{id:'stairs',x:238,y:20,w:22,h:6,locked:false,to:'pick',label:'STAIRS'}];
- /* dressed with Yana's mirror-room set (2026-08-30): real staircase under the STAIRS door, three gallery paintings */
- r.deco=[{k:'stairsArt',x:233,y:26},{k:'painting1',x:126,y:40},{k:'painting2',x:160,y:38},{k:'painting3',x:196,y:42}];
+ /* dressed with Yana's mirror-room set: real staircase under the STAIRS door. The gallery paintings moved down to floor 2 (2026-08-30, Yana) — this room is just the mirror, the stairs and the little door */
+ r.deco=[{k:'stairsArt',x:233,y:26}];
  addNote(r,96,126,'...only one this year and it stays quiet until spring. Yours, A.');addBunny(r,178,100,'stand','It is standing now. It was never this tall.');
  /* the mirror never explains itself: interacting opens the wordless glitch dialog — her own portrait, wearing ears (drawDialog, speaker 'mirror') */
  /* hotspot = the glass only (sprite draws 4px left / 8px up of it), reach 18: reachable standing in front, not from the SMALL DOOR */
@@ -955,14 +965,15 @@ function label(t,cx,y,hot,always){if(CFG.mode!=='designer'&&!hot&&!always)return
 function drawPlayer(p){
  /* horror floors: the friends' 4-direction walk sheets — walkSide 3×21×40 (faces right, flipped for left),
     walkUp 4×20×40, walkDown 4×24×41, 100ms cycle while moving. Standing still facing down = the heroIdle
-    hands-clasped pose (heroBunny — same pose holding the plush — in rooms that set r.heroBunny, i.e. the ending).
+    hands-clasped pose (heroBunny — same pose holding the plush — in rooms that set r.heroBunny, i.e. the ending,
+    and for the rest of the run once she picks the little bunny off ROSE's bed: G.plush).
     An uploaded player sprite still wins; the purple-drained charRef is the fallback if the sheets are missing. */
  if(!(UP.playerImg&&UP.playerImg.naturalWidth)&&CFG.sprChar&&ART.walkSide&&ART.walkSide.naturalWidth){
   let sheet=ART.walkSide,n=3,flip=p.face==='left';
   if(p.dir==='up'&&ART.walkUp.naturalWidth){sheet=ART.walkUp;n=4;flip=false;}
   else if(p.dir==='down'&&ART.walkDown.naturalWidth){sheet=ART.walkDown;n=4;flip=false;}
   if(!p.moving&&p.dir==='down'){
-   const idle=(G.room&&G.room.heroBunny&&ART.heroBunny&&ART.heroBunny.naturalWidth)?ART.heroBunny:ART.heroIdle;
+   const idle=(((G.room&&G.room.heroBunny)||G.plush)&&ART.heroBunny&&ART.heroBunny.naturalWidth)?ART.heroBunny:ART.heroIdle;
    if(idle&&idle.naturalWidth){ctx.drawImage(idle,Math.round(p.x+p.w/2-idle.naturalWidth/2),Math.round(p.y+p.h-idle.naturalHeight));return;}}
   const fw=sheet.naturalWidth/n,fh=sheet.naturalHeight,f=p.moving?Math.floor(performance.now()/100)%n:0;
   const dx=Math.round(p.x+p.w/2-fw/2),dy=Math.round(p.y+p.h-fh);
@@ -1013,16 +1024,16 @@ function drawItem(it,hot){const k=it.kind||'npc';
    rect(it.x+4,it.y+3,2,2,flip?CFG.cRed:CFG.cInk);rect(it.x+8,it.y+3,2,2,flip?CFG.cRed:CFG.cInk);rect(it.x+6,it.y+7,2,1,CFG.cInk);}}          // button eyes · stitch
  else if(k==='clue'){if(it.id==='mirror'&&ART.mirrorBig&&ART.mirrorBig.naturalWidth){
    /* Yana's tall mirror (24×42). The glass is alive but never explains itself:
-      · a dark echo of the player slides through it while she is in front — that's the "come closer" cue
+      · a dark echo of the player slides through it ONLY while she is in front — from afar the glass is empty (Yana 2026-08-30)
       · a pale gleam sweeps the glass every few seconds so the eye keeps returning to it
-      · the floor-3 world tell: while the claim line is up and it lies, the echo opens red eyes
+      · the floor-3 world tell: the echo's red eyes surface in pulses (~0.7s every ~2.6s) — never tied to a dialog being open
       · the ears reveal happens only on interact (the wordless 'mirror' dialog) */
    const sx=it.x-4,sy=it.y-8;ctx.drawImage(ART.mirrorBig,sx,sy);
    const gx=sx+4,gy=sy+5,gw=16,gh=32,p=G.player;
    ctx.save();ctx.beginPath();ctx.rect(gx,gy,gw,gh);ctx.clip();
    const dx=(p.x+p.w/2)-(it.x+it.w/2);
-   const tellNow=G.room&&G.room.mirrorTell&&D;   // the tell shows even from across the room: someone stands in the glass who shouldn't
-   if(Math.abs(dx)<52||tellNow){const sil=silhouette('heroIdle','#3a2b55');
+   const tellNow=G.room&&G.room.mirrorTell&&((performance.now()/2600)%1)<0.27;
+   if(Math.abs(dx)<52){const sil=silhouette('heroIdle','#3a2b55');
     if(sil){const sw=Math.round(sil.width*0.62),sh=Math.round(sil.height*0.62);
      const rx=Math.round(gx+gw/2-sw/2+Math.max(-5,Math.min(5,dx*0.18))),ry=gy+gh-sh+1;
      ctx.globalAlpha=(tellNow?0.5:0.28)+0.06*Math.sin(performance.now()/300);ctx.drawImage(sil,rx,ry,sw,sh);ctx.globalAlpha=1;
@@ -1032,10 +1043,13 @@ function drawItem(it,hot){const k=it.kind||'npc';
     ctx.beginPath();ctx.moveTo(lx,gy+gh);ctx.lineTo(lx+3,gy+gh);ctx.lineTo(lx+9,gy);ctx.lineTo(lx+6,gy);ctx.closePath();ctx.fill();ctx.globalAlpha=1;}
    ctx.restore();}
   else if(it.id==='mirror'){rect(it.x-1,it.y-1,it.w+2,it.h+2,CFG.cLilac);rect(it.x,it.y,it.w,it.h,CFG.cInk);
-   const wrongFace=G.room&&G.room.mirrorTell&&D;rect(it.x+11,it.y+11,5,9,CFG.cLilac);rect(it.x+11,it.y+6,1,5,CFG.cLilac);rect(it.x+14,it.y+6,1,5,CFG.cLilac);
+   const wrongFace=G.room&&G.room.mirrorTell&&((performance.now()/2600)%1)<0.27;rect(it.x+11,it.y+11,5,9,CFG.cLilac);rect(it.x+11,it.y+6,1,5,CFG.cLilac);rect(it.x+14,it.y+6,1,5,CFG.cLilac);
    if(wrongFace){rect(it.x+12,it.y+13,1,1,CFG.cRed);rect(it.x+14,it.y+13,1,1,CFG.cRed);}else{rect(it.x+12,it.y+13,1,1,CFG.cInk);rect(it.x+14,it.y+13,1,1,CFG.cInk);}}
+  /* every wall note/scratch draws Yana's noteScrap art (2026-08-30), same as the torn notes */
+  else if(ART.noteScrap&&ART.noteScrap.naturalWidth)ctx.drawImage(ART.noteScrap,Math.round(it.x+it.w/2-ART.noteScrap.naturalWidth/2),Math.round(it.y+it.h/2-ART.noteScrap.naturalHeight/2));
   else{rect(it.x,it.y,it.w,it.h,CFG.cPale);for(let i=2;i<it.h-2;i+=3)rect(it.x+2,it.y+i,it.w-4,1,CFG.cMid);}}
- else if(k==='collect'){if(it.paint){rect(it.x,it.y,it.w+2,it.h+2,CFG.cMid);rect(it.x+1,it.y+1,it.w,it.h,CFG.cInk);rect(it.x+4,it.y+3,3,5,CFG.cPale);}
+ else if(k==='collect'){if(it.paint){if(ART.painting2&&ART.painting2.naturalWidth)ctx.drawImage(ART.painting2,it.x,it.y);
+   else{rect(it.x,it.y,it.w+2,it.h+2,CFG.cMid);rect(it.x+1,it.y+1,it.w,it.h,CFG.cInk);rect(it.x+4,it.y+3,3,5,CFG.cPale);}}
   else if(ART.noteScrap&&ART.noteScrap.naturalWidth)ctx.drawImage(ART.noteScrap,Math.round(it.x+it.w/2-ART.noteScrap.naturalWidth/2),Math.round(it.y+it.h-ART.noteScrap.naturalHeight));
   else{rect(it.x,it.y,it.w,it.h,CFG.cPale);rect(it.x+1,it.y+2,it.w-2,1,CFG.cRed);rect(it.x+1,it.y+5,it.w-2,1,CFG.cRed);}}
  else{rect(it.x,it.y,it.w,it.h,CFG.cLilac);if(it.id==='girlA'||it.id==='girlB'){rect(it.x+2,it.y-4,6,5,CFG.cInk);}if(it.id==='bunny'){rect(it.x+2,it.y-6,3,6,CFG.cPale);rect(it.x+9,it.y-6,3,6,CFG.cPale);rect(it.x+4,it.y+4,2,2,CFG.cInk);rect(it.x+8,it.y+4,2,2,CFG.cInk);}}
