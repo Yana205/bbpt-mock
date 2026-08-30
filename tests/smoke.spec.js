@@ -13,6 +13,13 @@ async function useAt(page, x, y) {
   await page.evaluate(([x, y]) => { BB.teleport(x, y); BB.press('KeyZ'); }, [x, y]);
   await page.waitForTimeout(80);
 }
+// the cups are gated behind talking to a girl first — run Vivi's greeting so a test can drink
+async function meetVivi(page) {
+  await page.evaluate(() => { BB.state.room.items.find(i => i.id === 'girlA').use(); });
+  await page.waitForFunction(() => BB.dialogOpen());
+  await skip(page);
+  await page.waitForFunction(() => !BB.dialogOpen());
+}
 
 test('boots into tea party with 3 petals and a hidden log in playtest mode', async ({ page }) => {
   const errors = [];
@@ -578,6 +585,7 @@ test('interact picks the nearest hot item — standing at the cup drinks the cup
   await page.goto(url + '?seed=1&room=teaparty');
   await waitRoom(page, 'teaparty');
   await skip(page);
+  await meetVivi(page);
   await useAt(page, 112, 94); // inside both the cup's and Vivi's reach
   await page.waitForFunction(() => BB.dialogOpen());
   await skip(page);
@@ -588,10 +596,47 @@ test('tea party: the sprite HEAD reaches the cups — standing in FRONT of the t
   await page.goto(url + '?seed=1&room=teaparty');
   await waitRoom(page, 'teaparty');
   await skip(page);
+  await meetVivi(page);
   await useAt(page, 107, 112); // feet well below the table edge; only the head is near CUP L
   await page.waitForFunction(() => BB.dialogOpen());
   await skip(page);
   await waitRoom(page, 'floor1'); // the drink fired
+});
+
+test('tea party: cups refuse until you have talked to one of the girls', async ({ page }) => {
+  await page.goto(url + '?seed=1&room=teaparty');
+  await waitRoom(page, 'teaparty');
+  await skip(page);
+  await useAt(page, 112, 94); // try CUP L cold — no hello yet
+  await page.waitForFunction(() => BB.dialogOpen());
+  await skip(page);
+  await page.waitForFunction(() => !BB.dialogOpen());
+  await page.waitForTimeout(200);
+  expect(await page.evaluate(() => BB.state.room.name)).toBe('teaparty'); // refused, still at the party
+  expect(await page.evaluate(() => BB.session.events.some(e => e.type === 'decision'))).toBe(false);
+  // Mara counts too — either girl unlocks the cups
+  await page.evaluate(() => { BB.state.room.items.find(i => i.id === 'girlB').use(); });
+  await page.waitForFunction(() => BB.dialogOpen());
+  await skip(page);
+  await page.waitForFunction(() => !BB.dialogOpen());
+  await useAt(page, 112, 94);
+  await page.waitForFunction(() => BB.dialogOpen());
+  await skip(page);
+  await waitRoom(page, 'floor1');
+});
+
+test('tea party: drinking fades through a black text interlude before floor 1', async ({ page }) => {
+  await page.goto(url + '?seed=1&room=teaparty');
+  await waitRoom(page, 'teaparty');
+  await skip(page);
+  await meetVivi(page);
+  await useAt(page, 112, 94);
+  await page.waitForFunction(() => BB.dialogOpen());
+  await skip(page);
+  await page.waitForFunction(() => BB.interlude(), null, { timeout: 3000 }); // black screen holds while the line breathes
+  expect((await page.evaluate(() => BB.interlude())).text).toContain('eyes close');
+  expect(await page.evaluate(() => BB.state.room.name)).toBe('teaparty'); // still black at the party — the room switches after
+  await waitRoom(page, 'floor1');
 });
 
 test('every dialog renders in-canvas with the Figma box — the DOM textbox is gone', async ({ page }) => {

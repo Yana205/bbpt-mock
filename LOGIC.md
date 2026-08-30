@@ -21,7 +21,7 @@ ENTER room
 ## Floors (defaults = GDD v0 preset)
 | floor | claim about | speaker | lie% | tell | wrong → | extra |
 |---|---|---|---|---|---|---|
-| 0 tea party | which CUP is sweet | Vivi (girl) | 100 | on | nothing | Mara foreshadows; bunny doll in corner; any cup → basement |
+| 0 tea party | which CUP is sweet | Vivi (girl) | 100 | on | nothing | Mara foreshadows; bunny doll in corner; cups locked until she talks to a girl (2026-08-30 — drinking cold would skip the claim); any cup → black text interlude ("Your eyes close on their own.") → basement |
 | 1 guest room (teach) | which PILLOW hides the key | bunny (doorway) | 100 | on | petal | two beds, names stitched in; wrong = hair + ribbon; key unlocks EXIT; note 1 |
 | 2 gallery (contradict) | RABBIT door vs GIRL door | bunny + WALL SCRATCH | 50 | on | petal | scratch contradicts / agrees / truth / off; liar carries the tell; note 2 behind the bunny-less painting; correct → doll room |
 | doll room | — | bunny (doorway) | — | — | — | combat on: 3 dolls, clear to unlock; off: walk-through |
