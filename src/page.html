@@ -225,9 +225,8 @@ if(m!=='designer')a.className='app pt norail'+(rel?' rel':'');})();</script>
     <div class="row"><label>Floor 2 dolls</label><input type="number" data-cfg="dolls" min="1" max="10"></div>
     <div class="row"><label>Doll speed px/s</label><input type="number" data-cfg="dollSpeed" step="5"></div>
     <div class="row"><label>Doll HP</label><input type="number" data-cfg="dollHp" min="1"></div>
-    <div class="row"><label>Attack reach px</label><input type="number" data-cfg="atkReach"></div>
-    <div class="row"><label>Attack active ms</label><input type="number" data-cfg="atkActive" step="10"></div>
-    <div class="row"><label>Attack cooldown ms</label><input type="number" data-cfg="atkCd" step="10"></div>
+    <div class="row"><label>Button shot px/s</label><input type="number" data-cfg="shotSpeed" step="10"></div>
+    <div class="row"><label>Shot cooldown ms</label><input type="number" data-cfg="atkCd" step="10"></div>
     <div class="row"><label>Knockback px</label><input type="number" data-cfg="knock"></div>
     <div class="row"><label>Hurt i‑frames ms</label><input type="number" data-cfg="hurtCd" step="50"></div>
     <div class="row"><label>Flee the doll room</label><select data-cfg="flee"><option value="petal">force door · −1 petal</option><option value="free">force door · free</option><option value="none">must clear dolls</option></select></div>
@@ -343,14 +342,14 @@ const DEF={mode:'playtest',seed:1,timeScale:1,skipIntro:false,release:false,
  lie0:1,tell0:true,wrong0:'none',lie1:1,tell1:true,wrong1:'petal',lie2:0.5,tell2:true,wrong2:'petal',lie3:1,tell3:false,wrong3:'petal',note2:'contradict',scenario:'fight',
  labClaims:10,labLie:0.5,labPetals:false,
  petals:3,punishDolls:2,scareMs:600,
- combat:true,dolls:3,dollSpeed:28,dollHp:1,atkReach:14,atkActive:120,atkCd:380,knock:18,hurtCd:900,flee:'free',
+ combat:true,dolls:3,dollSpeed:28,dollHp:1,shotSpeed:170,atkCd:380,knock:18,hurtCd:900,flee:'free',
  speed:60,reach:14,textSpeed:40,
  sprChar:true,
  titleFont:'Silkscreen',titleColor:'#e0aab8',endTagline:'the torn notes remember more than you do',
  cInk:'#0e0a14',cPlum:'#241a3a',cMid:'#4a3a6b',cLilac:'#9a86c4',cPale:'#d9cfee',cRed:'#c8262e'};
 let CFG={...DEF};
 // storage key bumped to v3 for the submission polish pass (2026-08-29: quicker tell, audio, release chrome)
-try{const s=localStorage.getItem('bb.cfg3');if(s){const o=JSON.parse(s);delete o.release;CFG={...DEF,...o};}}catch(e){}   // release is per-URL, never persisted
+try{const s=localStorage.getItem('bb.cfg3');if(s){const o=JSON.parse(s);delete o.release;delete o.atkReach;delete o.atkActive;CFG={...DEF,...o};}}catch(e){}   // release is per-URL, never persisted; atkReach/atkActive died with the melee swing (2026-08-30)
 // URL params override everything (share links): ?seed=42&tellType=redpixel&mode=playtest&room=lab
 const URLP=new URLSearchParams(location.search);let urlRoom=null;let urlScen=URLP.get('scenario');
 for(const [k,v] of URLP){if(k==='room'){urlRoom=v;continue;}if(!(k in DEF))continue;const d=DEF[k];CFG[k]=typeof d==='boolean'?(v==='1'||v==='true'):typeof d==='number'?parseFloat(v):v;}
@@ -400,6 +399,7 @@ const SFX={
  wrong(){tone(110,0.28,'sawtooth',0.10,0,-40);tone(55,0.30,'square',0.08,0.02);},
  door(){tone(80,0.12,'square',0.06,0,-30);noise(0.08,0.03,0,300);},
  hit(){tone(220,0.06,'square',0.08,0,-80);noise(0.05,0.05,0,800);},
+ throw(){tone(320,0.07,'square',0.05,0,180);noise(0.04,0.02,0,1400);},
  hurt(){tone(160,0.18,'sawtooth',0.09,0,-90);},
  start(){tone(440,0.10,'square',0.06);tone(587,0.10,'square',0.06,0.10);tone(880,0.24,'sine',0.07,0.20);},
  end(){tone(523,0.16,'sine',0.07);tone(392,0.16,'sine',0.07,0.16);tone(330,0.34,'sine',0.07,0.32);}};
@@ -542,7 +542,7 @@ function hud(){
  document.getElementById('hudKey').hidden=!G.key;}
 
 /* ---------- INPUT ---------- */
-const keys={};let actPressed=false,atkPressed=false,escPressed=false;
+const keys={};let actPressed=false,atkPressed=false,escPressed=false,navPressed=0;
 const cv=document.getElementById('game');cv.tabIndex=0;
 addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT')return;
  /* swallow game keys on every event incl. repeats — inside the itch iframe an unprevented repeat scroll-chains to the host page */
@@ -553,7 +553,8 @@ addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==
   if((e.ctrlKey||e.metaKey)&&e.code==='KeyZ'){undoEdit();e.preventDefault();return;}
   if(ED.sel&&e.shiftKey&&/^Arrow/.test(e.code)){pushUndo();moveSel(ED.sel.o.x+(e.code==='ArrowLeft'?-1:e.code==='ArrowRight'?1:0),ED.sel.o.y+(e.code==='ArrowUp'?-1:e.code==='ArrowDown'?1:0));e.preventDefault();return;}
   if(ED.sel&&ED.sel.t==='deco'&&(e.code==='Delete'||e.code==='Backspace')){delDeco();e.preventDefault();return;}}
- keys[e.code]=true;if(['KeyZ','Space','Enter'].includes(e.code))actPressed=true;if(e.code==='KeyX')atkPressed=true;if(e.code==='Escape')escPressed=true;});
+ keys[e.code]=true;if(['KeyZ','Space','Enter'].includes(e.code))actPressed=true;if(e.code==='KeyX')atkPressed=true;if(e.code==='Escape')escPressed=true;
+ if(!e.repeat&&(e.code==='ArrowLeft'||e.code==='KeyA'))navPressed=-1;if(!e.repeat&&(e.code==='ArrowRight'||e.code==='KeyD'))navPressed=1;});   // dialog choice nav (edge-triggered)
 addEventListener('keyup',e=>keys[e.code]=false);
 cv.addEventListener('click',()=>cv.focus());
 
@@ -562,12 +563,20 @@ let D=null;
 function say(lines,speaker,opts={}){return new Promise(res=>{
  let mood=opts.mood??null;   // Boo sulks: when the last decision ignored the bunny, its next lines sometimes wear the disappointed face
  if(!mood&&speaker==='bunny'&&G.booSulk){G.booSulk=false;if(mrng()<0.6)mood='sad';}
- D={lines,i:0,shown:0,speaker,mood,tellAt:opts.tellAt??-1,tellChar:opts.tellChar??2,tellFired:false,res};});}
-function endDialog(){const r=D.res;D=null;r();}
+ D={lines,i:0,shown:0,speaker,mood,tellAt:opts.tellAt??-1,tellChar:opts.tellChar??2,tellFired:false,
+  auto:opts.autoMs||0,autoT:0,               // autoMs: the box closes itself (the mirror's wordless flash) — resolves like a normal dismiss
+  choices:opts.choices||null,sel:0,res};});} // choices: after the last line types out, ←/→ pick an option, Z confirms; resolves with the index
+function endDialog(v){const r=D.res;D=null;r(v);}
+function choiceLive(){return D&&D.choices&&D.i===D.lines.length-1&&D.shown>=D.lines[D.i].length;}
 function updateDialog(dt){if(!D)return;const line=D.lines[D.i];const prev=Math.floor(D.shown);D.shown=Math.min(line.length,D.shown+CFG.textSpeed*dt);const cur=Math.floor(D.shown);
  if(cur>prev&&cur-prev<4&&cur<line.length&&cur%2===0&&/[a-z0-9]/i.test(line[cur-1]||''))sfx('blip');   // soft per-letter typing blip (skipping punctuation & instant-skip)
  if(D.i===D.tellAt&&!D.tellFired&&D.shown>D.tellChar){D.tellFired=true;if(CFG.tellDelayMs>0)setTimeout(()=>{if(D)fireTell();},CFG.tellDelayMs);else fireTell();}
- if(actPressed){actPressed=false;if(D.shown<line.length)D.shown=line.length;else{D.i++;D.shown=0;if(D.i>=D.lines.length)endDialog();}}}
+ if(D.auto){D.autoT+=dt;if(D.autoT>=D.auto/1000){endDialog();return;}}
+ if(choiceLive()&&navPressed){D.sel=(D.sel+navPressed+D.choices.length)%D.choices.length;sfx('blip');}
+ navPressed=0;
+ if(actPressed){actPressed=false;if(D.shown<line.length)D.shown=line.length;
+  else if(choiceLive()){const s=D.sel;sfx('blip');endDialog(s);}
+  else{D.i++;D.shown=0;if(D.i>=D.lines.length)endDialog();}}}
 let tellVis=false,tellTimer=0;
 function fireTell(){const t=CFG.tellType;if(t==='none')return;const ms=(!G.tellSeen&&CFG.firstTellMs>0)?Math.max(CFG.firstTellMs,CFG.tellMs):CFG.tellMs;G.tellSeen=true;log(`tell fired: ${t} (${ms}ms${ms!==CFG.tellMs?' · first-tell teach':''})`,'lie',true);rec('tell',{tellType:t,ms});tellVis=true;tellTimer=ms/1000;
  if(t==='candle'){G.candleFlicker=ms/1000;}}
@@ -575,7 +584,7 @@ function fireTell(){const t=CFG.tellType;if(t==='none')return;const ms=(!G.tellS
 /* ---------- GAME STATE ---------- */
 const W=320,H=180,SS=3;   // SS: backing-store supersample — art still scales by an exact integer, but dialog text can rasterize at 16px Silkscreen (crisp 2× of its native 8) instead of a huge 24px-equivalent
 const ctx=cv.getContext('2d');ctx.imageSmoothingEnabled=false;
-const G={room:null,petals:CFG.petals,notes:new Set(),player:{x:160,y:120,w:10,h:14,dir:'down',face:'right',hurt:0},dolls:[],atk:{t:0,cd:0},scare:0,fade:0,candleFlicker:0,glow:0,fx:[],busy:false,returnTo:null,fromPunish:false,reveal:false,key:false,plush:false,tellSeen:false};
+const G={room:null,petals:CFG.petals,notes:new Set(),player:{x:160,y:120,w:10,h:14,dir:'down',face:'right',hurt:0},dolls:[],shots:[],atk:{t:0,cd:0},scare:0,fade:0,candleFlicker:0,glow:0,fx:[],busy:false,returnTo:null,fromPunish:false,reveal:false,key:false,plush:false,tellSeen:false};
 const R={};const order=['lab','teaparty','floor1','floor2','dollroom','floor3','ending'];
 const roomSel=document.getElementById('roomSel');const TABN={teaparty:'TEA PARTY',floor1:'FLOOR 1',floor2:'FLOOR 2',dollroom:'DOLLS',floor3:'FLOOR 3',ending:'ENDING',lab:'TELL LAB'};
 const tabsEl=document.getElementById('tabs');
@@ -601,9 +610,11 @@ function rect(x,y,w,h,c){ctx.fillStyle=c;ctx.fillRect(x,y,w,h);}
 function spr(name,x,y,flip,s=1){const im=ART[name];if(!im||!im.naturalWidth)return;const w=Math.max(1,Math.round(im.naturalWidth*s)),h=Math.max(1,Math.round(im.naturalHeight*s));
  if(flip){ctx.save();ctx.translate(x+w,y);ctx.scale(-1,1);ctx.drawImage(im,0,0,w,h);ctx.restore();}else ctx.drawImage(im,x,y,w,h);}
 /* soft "got it" moment: pale glow + a pixel key floating up from (x,y). Deliberately quiet — no red, no shake. */
+/* tiny floating caption above the player (e.g. trying to attack with empty hands) */
+function hintFx(txt){if(G.fx.some(f=>f.hint))return;G.fx.push({t:0,dur:0.9,hint:true,x:G.player.x+G.player.w/2,y:G.player.y-6,draw(f){ctx.globalAlpha=1-f*f;ctx.font='7px monospace';ctx.textAlign='center';ctx.fillStyle=CFG.cPale;ctx.fillText(txt,Math.round(this.x),Math.round(this.y-6*f));ctx.textAlign='left';ctx.globalAlpha=1;}});}
 function keyFx(x,y){G.glow=0.5;G.fx.push({t:0,dur:0.85,x,y,draw(f){const dy=-14*(1-(1-f)*(1-f));ctx.globalAlpha=1-f*f;const kx=Math.round(this.x),ky=Math.round(this.y+dy);rect(kx,ky+1,3,3,CFG.cPale);rect(kx+1,ky+2,1,1,CFG.cPlum);rect(kx+3,ky+2,5,1,CFG.cPale);rect(kx+6,ky+3,1,2,CFG.cPale);rect(kx+8,ky+3,1,2,CFG.cPale);ctx.globalAlpha=1;}});}
 function mkRoom(name,build){R[name]={name,build};}
-function goto(name,opts={}){if(G.busy)return;if(D)endDialog();G.busy=true;G.fade=1;G.fx=[];setTimeout(()=>{const r=R[name];G.dolls=[];const b=r.build(opts);b.name=name;b.items=b.items||[];b.doors=b.doors||[];b.claim=b.claim||null;applyLayout(b);G.room=b;G.player.x=G.room.spawn?.x??160;G.player.y=G.room.spawn?.y??140;G.player.hurt=0;roomSel.value=name;syncTabs();hud();log(`enter ${name}`,'sys');rec('enter',{room:name});flowReset();flow(0,name,'on');ruleLine();if(CFG.mode==='designer'){ED.sel=null;selSync();if(b.cardEls)document.getElementById('insWin').classList.remove('hidden');}G.busy=false;G.fade=-1;musicSync();if(!b.quiet)sfx('door');if(G.room.onEnter)G.room.onEnter();},250);}
+function goto(name,opts={}){if(G.busy)return;if(D)endDialog();G.busy=true;G.fade=1;G.fx=[];setTimeout(()=>{const r=R[name];G.dolls=[];G.shots=[];const b=r.build(opts);b.name=name;b.items=b.items||[];b.doors=b.doors||[];b.claim=b.claim||null;applyLayout(b);G.room=b;G.player.x=G.room.spawn?.x??160;G.player.y=G.room.spawn?.y??140;G.player.hurt=0;roomSel.value=name;syncTabs();hud();log(`enter ${name}`,'sys');rec('enter',{room:name});flowReset();flow(0,name,'on');ruleLine();if(CFG.mode==='designer'){ED.sel=null;selSync();if(b.cardEls)document.getElementById('insWin').classList.remove('hidden');}G.busy=false;G.fade=-1;musicSync();if(!b.quiet)sfx('door');if(G.room.onEnter)G.room.onEnter();},250);}
 
 /* ---------- LAYOUT EDITOR v2 (EDIT mode: click = select + inspector, drag = move; hotspots with `follow` travel with their art; saved per room) ---------- */
 let LAY={};try{const s=localStorage.getItem('bb.layout2');if(s)LAY=JSON.parse(s);
@@ -842,9 +853,11 @@ mkRoom('floor1',()=>{ const r={spawn:{x:155,y:140},floor:1,rule:'TEACH THE BITE.
  {id:'left',x:52,y:70,w:39,h:14,hidden:true,label:'PILLOW L',kind:'pick',pillow:true,use:()=>lift('left')},{id:'right',x:229,y:70,w:39,h:14,hidden:true,label:'PILLOW R',kind:'pick',pillow:true,use:()=>lift('right')},
  /* hotspot = the plush's lower half, so PILLOW R still wins the ranking when she stands by the pillow */
  {id:'plush',x:227,y:98,w:27,h:12,reach:12,hidden:true,label:G.plush?'':'PLUSH',kind:'npc',got:G.plush,async use(){if(this.got)return;
+  const pick=await say(['A little stuffed bunny, left on the bed. Button eyes, loose thread.','Take it with you?'],null,{choices:['TAKE IT','LEAVE IT']});
+  if(pick!==0){log('plush left on the bed','sys');rec('plushDecline',{room:'floor1'});return;}
   this.got=true;G.plush=true;G.room.deco=G.room.deco.filter(d=>d.k!=='plushLie');this.label='';
-  sfx('note');log('plush taken → she carries it','ok');rec('plush',{room:'floor1'});
-  await say(['A little stuffed bunny, left on the bed.','You pick it up. It fits right under your arm.'],null);}}];
+  sfx('note');log('plush taken → she carries it (button eyes = ammo)','ok');rec('plush',{room:'floor1'});
+  await say(['You pick it up. It fits right under your arm.'],null);}}];
  r.doors=[{id:'exit',x:152,y:20,w:16,h:6,locked:true,to:'floor2',label:'EXIT (locked)'}];addNote(r,232,132,'...welcome tea for the new girl, Saturday...');/* half-hidden under ROSE's bed (flow doc) */r.candle={x:196,y:30};addBunny(r,100,20,'stand','It is waiting for you by the door. It does not blink.');
  async function lift(side){if(r.opened)return;if(!r.claim){await say(['A small bed. A name is stitched into the blanket. Not yours. Yet.'],null);return;}
   recDecision(side);
@@ -883,7 +896,7 @@ mkRoom('floor2',()=>{const r={spawn:{x:155,y:145},floor:2,rule:'CONTRADICT. Bunn
   if(G.notes.has('floor2'))spr('painting2',110,51);};return r;});
 
 /* Doll room: with combat off it is the GDD fallback — a "run to the door" room. */
-mkRoom('dollroom',(o)=>{const r={spawn:{x:155,y:145},punish:!!o.punish,rule:CFG.combat?`COMBAT. X or SPACE swings in the facing direction. Clear all dolls → exit unlocks${CFG.flee!=='none'?', or force the door'+(CFG.flee==='petal'?' (−1 petal)':''):''}. Contact = 1 petal.`:'Combat OFF (scenario). Walk to the exit. Turn on combat in the rail or pick the Combat scenario.'};
+mkRoom('dollroom',(o)=>{const r={spawn:{x:155,y:145},punish:!!o.punish,rule:CFG.combat?`COMBAT. X or SPACE throws a button eye in the facing direction — only if she carries the plush (floor 1). Clear all dolls → exit unlocks${CFG.flee!=='none'?', or force the door'+(CFG.flee==='petal'?' (−1 petal)':''):''}. Contact = 1 petal.`:'Combat OFF (scenario). Walk to the exit. Turn on combat in the rail or pick the Combat scenario.'};
  const fight=CFG.combat;
  r.doors=[{id:'exit',x:152,y:20,w:16,h:6,locked:fight,to:r.punish?(G.returnTo||'floor2'):'floor3',label:fight?(CFG.flee!=='none'?'EXIT (force it)':'EXIT (clear dolls)'):'EXIT'}];addBunny(r,100,22,'sit','It watches from the doorway. It does not come in.');
  r.doors[0].onLocked=async()=>{if(CFG.flee==='none'||!G.dolls.length){say(['Locked.'],null);return;}
@@ -909,7 +922,8 @@ mkRoom('floor3',()=>{const r={spawn:{x:155,y:145},floor:3,rule:'BETRAY. No tell 
  addNote(r,96,126,'...only one this year and it stays quiet until spring. Yours, A.');addBunny(r,178,100,'stand','It is standing now. It was never this tall.');
  /* the mirror never explains itself: interacting opens the wordless glitch dialog — her own portrait, wearing ears (drawDialog, speaker 'mirror') */
  /* hotspot = the glass only (sprite draws 4px left / 8px up of it), reach 18: reachable standing in front, not from the SMALL DOOR */
- r.items.push({id:'mirror',x:66,y:58,w:16,h:26,reach:18,label:'MIRROR',kind:'clue',async use(){sfx('note');rec('mirrorLook',{});await say(['. . .'],'mirror');}});
+ /* the reveal is a flash: the box blinks in, glitches, and closes itself — no key press to dismiss (Yana 2026-08-30) */
+ r.items.push({id:'mirror',x:66,y:58,w:16,h:26,reach:18,label:'MIRROR',kind:'clue',async use(){sfx('note');rec('mirrorLook',{});await say(['. . .'],'mirror',{autoMs:1600});}});
  r.pick=async(side)=>{recDecision(side);if(side===r.claim.truth){log('correct → ending','ok');flowDecide(side,true,'→ ending');goto('ending');}else{flowDecide(side,false,(CFG['wrong3']==='doll'&&CFG.combat?'petal + doll room':CFG['wrong3']==='scare'?'scare only':'lose a petal'));if(!await wrongTrust(side==='stairs'?'It was never a stairway. The steps climb into the dark and set you back down here.':'The little door opens onto brick.',CFG.wrong3))await say(['"You\'re learning. I like that."'],'bunny');}};
  r.onEnter=async()=>{const LINE=s=>`${s==='stairs'?'The stairs go':'The little door goes'} home. I promise. I have never lied to you. Not once. You're my best friend.`;
   const roll=()=>{r.claim=rollClaim('floor3','bunny',['door','stairs'],LINE,CFG.lie3,CFG.tell3);r.mirrorTell=CFG.worldTells&&r.claim.lie;if(r.mirrorTell){log('world tell: the reflection wears the wrong face','lie',true);rec('tell',{tellType:'mirror',ms:0});}};
@@ -932,6 +946,7 @@ function update(dt){if(tellVis){tellTimer-=dt;if(tellTimer<=0){tellVis=false;}}
  if(G.fade<0){G.fade+=dt*3;if(G.fade>0)G.fade=0;}
  if(escPressed){escPressed=false;if(G.room?.skippable){log('intro skipped','sys');rec('skipIntro',{});goto('floor1');return;}}
  if(D){updateDialog(dt);atkPressed=false;G.player.moving=false;return;}
+ navPressed=0;
  const room=G.room;if(!room||G.busy)return;const p=G.player;
  if(room.title){if(actPressed){actPressed=false;sfx('start');rec('titleStart',{});resetRun();}return;}
  if(room.endcard){if(actPressed){actPressed=false;goto('title');}return;}
@@ -942,22 +957,33 @@ function update(dt){if(tellVis){tellTimer-=dt;if(tellTimer<=0){tellVis=false;}}
  const B=room.bounds||{x0:42,x1:276,y0:22,y1:158};   // rooms may override the walkable rect (tea party is full-bleed)
  p.x=Math.max(B.x0,Math.min(B.x1-p.w,p.x+dx*CFG.speed*dt*mv));p.y=Math.max(B.y0,Math.min(B.y1-p.h,p.y+dy*CFG.speed*dt*mv));
  if(p.hurt>0)p.hurt-=dt;
- if(G.atk.cd>0)G.atk.cd-=dt;if(G.atk.t>0)G.atk.t-=dt;
- if(atkPressed){atkPressed=false;if(!CFG.combat){log('X: combat is OFF in this scenario (Combat → enabled, or scenario "Combat on")','sys');}else if(G.atk.cd<=0){G.atk.cd=CFG.atkCd/1000;G.atk.t=CFG.atkActive/1000;}}
- const hb=hitbox();
+ if(G.atk.cd>0)G.atk.cd-=dt;
+ if(atkPressed){atkPressed=false;fireShot();}
+ /* button-eye shots: fly straight, pop the first doll they touch, vanish at the walls */
+ for(const s of G.shots){s.x+=s.vx*dt;s.y+=s.vy*dt;
+  if(s.x<B.x0-6||s.x>B.x1+6||s.y<B.y0-6||s.y>B.y1+6){s.dead=true;continue;}
+  for(const d of G.dolls){if(d.hit<=0&&s.x>d.x-2&&s.x<d.x+d.w+2&&s.y>d.y-6&&s.y<d.y+d.h+4){
+   const k=Math.hypot(s.vx,s.vy)||1;d.hp--;d.hit=0.25;d.sit=false;d.x+=s.vx/k*CFG.knock;d.y+=s.vy/k*CFG.knock;
+   sfx('hit');log(d.hp<=0?'doll destroyed':'doll hit','ok');s.dead=true;break;}}}
+ G.shots=G.shots.filter(s=>!s.dead);
  for(const d of G.dolls){if(d.sit&&d.wakeAt&&performance.now()>=d.wakeAt)d.sit=false;
   const ang=Math.atan2(p.y-d.y,p.x-d.x);if(d.hit>0){d.hit-=dt;}else if(!d.sit){d.x+=Math.cos(ang)*CFG.dollSpeed*dt;d.y+=Math.sin(ang)*CFG.dollSpeed*dt;}
-  if(G.atk.t>0&&hb&&overlap(hb,d)&&d.hit<=0){d.hp--;d.hit=0.25;d.sit=false;d.x-=Math.cos(ang)*CFG.knock;d.y-=Math.sin(ang)*CFG.knock;sfx('hit');log(d.hp<=0?'doll destroyed':'doll hit','ok');}
   if(!d.sit&&overlap(p,d)&&p.hurt<=0){p.hurt=CFG.hurtCd/1000;G.petals--;G.scare=0.25;sfx('hurt');hud();log(`doll contact → petal lost (${G.petals})`,'lie');rec('petal',{left:G.petals,reason:'doll'});p.x-=Math.cos(ang)*CFG.knock;p.y-=Math.sin(ang)*CFG.knock;
    if(G.petals<=0){G.petals=CFG.petals;log('petals 0 → floor restart','lie');rec('restart',{room:room.name});say(['The dolls tuck you in.','...','You wake up again.'],null).then(()=>goto(room.name,{punish:room.punish}));return;}}}
  G.dolls=G.dolls.filter(d=>d.hp>0);
  if(room.update)room.update(dt);
  if(actPressed){actPressed=false;const door=room.doors.find(d=>near(d));
-  // mid-fight, Z/Space swings too — unless you're at a door (that's the flee)
-  if(CFG.combat&&G.dolls.length>0&&!door){if(G.atk.cd<=0){G.atk.cd=CFG.atkCd/1000;G.atk.t=CFG.atkActive/1000;}return;}
+  // mid-fight, Z/Space throws too — unless you're at a door (that's the flee)
+  if(CFG.combat&&G.dolls.length>0&&!door){fireShot();return;}
   let target=nearestItem(room);if(target){target.use();return;}
   if(door){if(door.locked){if(door.onLocked)door.onLocked();else{log('door locked','');say(['Locked.'],null);}}else if(door.to==='pick')room.pick(door.id);else goto(door.to);}}}
-function hitbox(){const p=G.player,r=CFG.atkReach;if(p.dir==='left')return{x:p.x-r,y:p.y,w:r,h:p.h};if(p.dir==='right')return{x:p.x+p.w,y:p.y,w:r,h:p.h};if(p.dir==='up')return{x:p.x,y:p.y-r,w:p.w,h:r};return{x:p.x,y:p.y+p.h,w:p.w,h:r};}
+/* the attack IS the bunny (2026-08-30, Yana): she flicks one of its button eyes in the facing direction.
+   No plush = no attack — the doll room still has the flee-the-door fallback. Melee swing (hitbox/atkReach) is gone. */
+function fireShot(){if(!CFG.combat){log('X: combat is OFF in this scenario (Combat → enabled, or scenario "Combat on")','sys');return;}
+ if(!G.plush){if(!G.noAmmoHinted){G.noAmmoHinted=true;log('X: nothing to throw — the plush bunny (floor 1, ROSE\'s bed) is the weapon','sys');}hintFx('nothing to throw');return;}
+ if(G.atk.cd>0)return;G.atk.cd=CFG.atkCd/1000;
+ const p=G.player,v={left:[-1,0],right:[1,0],up:[0,-1],down:[0,1]}[p.dir]||[0,1];
+ G.shots.push({x:p.x+p.w/2,y:p.y+p.h/2-2,vx:v[0]*CFG.shotSpeed,vy:v[1]*CFG.shotSpeed});sfx('throw');rec('shot',{});}
 function overlap(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;}
 
 /* ---------- DRAW ---------- */
@@ -1086,7 +1112,7 @@ function draw(){const room=G.room;
   else drawPlayer(p);}
  /* interact glow drawn ABOVE the player so it never hides behind the sprite; marks exactly what Z will act on */
  if(!room.nochar&&!D){if(hotIt)hotGlow(hotBox(hotIt));else{const hd=(room.doors||[]).find(d=>near(d));if(hd)hotGlow({x:hd.x-2,y:hd.y-2,w:hd.w+4,h:hd.h+10});}}
- if(G.atk.t>0){const hb=hitbox();rect(hb.x,hb.y,hb.w,hb.h,CFG.cPale);}
+ for(const s of G.shots){const x=Math.round(s.x)-1,y=Math.round(s.y)-1;rect(x,y,3,3,CFG.cPale);rect(x+1,y+1,1,1,CFG.cInk);}   // a flying button eye: pale disc, dark thread hole (readable on the plum floor)
  if(G.glow>0){ctx.fillStyle=CFG.cPale;ctx.globalAlpha=Math.min(0.16,G.glow*0.32);ctx.fillRect(0,0,W,H);ctx.globalAlpha=1;}
  if(G.scare>0){ctx.fillStyle=CFG.cRed;ctx.globalAlpha=Math.min(0.6,G.scare);ctx.fillRect(0,0,W,H);ctx.globalAlpha=1;ctx.fillStyle=CFG.cInk;for(let i=0;i<12;i++){const x=Math.floor(Math.random()*W),y=Math.floor(Math.random()*H);ctx.fillRect(x,y,3,3);}}
  if(D)drawDialog();
@@ -1130,8 +1156,16 @@ function drawDialog(){const bx=16,by=125,mir=D.speaker==='mirror',hor=(!G.room||
  let nl=1,cx=x0;for(const w of line.split(' ')){const ww=ctx.measureText(w+' ').width;if(cx+ww>x1&&cx>x0){cx=x0;nl++;}cx+=ww;}
  let wx=x0,wy=(by+26)*SS+6-Math.min(3,nl-1)*lh/2;
  for(const w of shown.split(' ')){const ww=ctx.measureText(w+' ').width;if(wx+ww>x1&&wx>x0){wx=x0;wy+=lh;}if(wy>(by+44)*SS)break;ctx.fillText(w,wx+(gl?((Math.random()*2|0)-1)*SS:0),wy+(gl?(Math.random()*2|0)*SS:0));wx+=ww;}
+ if(choiceLive()){
+  /* the options sit on the box's bottom line: dim unpicked, bright picked with a pixel ▶; ←/→ + Z */
+  ctx.font="16px 'Silkscreen',monospace";const cy=(by+40)*SS;
+  const ws=D.choices.map(c=>ctx.measureText(c).width);let cxx=x1-ws.reduce((a,b)=>a+b,0)-(D.choices.length-1)*10*SS;
+  D.choices.forEach((c,i)=>{const on=i===D.sel;ctx.globalAlpha=on?1:0.4;ctx.fillStyle=inkCol;
+   if(on)for(let j=0;j<3;j++){const h=(5-2*j)*SS;ctx.fillRect(cxx-5*SS+j*SS,cy-6*SS-h/2,SS,h);}   // pixel ▶ beside the picked option
+   ctx.fillText(c,cxx,cy);cxx+=ws[i]+10*SS;});
+  ctx.globalAlpha=1;}
  ctx.restore();
- if(D.shown>=line.length&&Math.floor(performance.now()/450)%2){ctx.fillStyle=inkCol;for(let i=0;i<4;i++)ctx.fillRect(bx+272+i,by+38+i,7-2*i,1);}   // crisp pixel ▼ (font glyphs antialias)
+ if(D.shown>=line.length&&!choiceLive()&&Math.floor(performance.now()/450)%2){ctx.fillStyle=inkCol;for(let i=0;i<4;i++)ctx.fillRect(bx+272+i,by+38+i,7-2*i,1);}   // crisp pixel ▼ (font glyphs antialias)
  ctx.textAlign='left';}
 /* editor overlay: selection outline + handles, the selected object's interact radius, optional all-hitboxes layer */
 function edCirc(o){const r=(o.reach??CFG.reach)+Math.max(o.w,o.h)/2;ctx.beginPath();ctx.arc(o.x+o.w/2,o.y+o.h/2,r,0,Math.PI*2);ctx.stroke();}
@@ -1156,8 +1190,9 @@ window.BB={cfg:CFG,state:G,session:S,goto,resetRun,summary,exportSession,scenari
  press:code=>{if(['KeyZ','Space','Enter'].includes(code))actPressed=true;else if(code==='KeyX')atkPressed=true;else if(code==='Escape')escPressed=true;},
  hold:(code,on)=>{keys[code]=on;},
  dialogOpen:()=>!!D,
- dialogInfo:()=>D?{speaker:D.speaker||null,mood:D.mood||null}:null,
- skipDialog:()=>{while(D){D.shown=D.lines[D.i].length;D.i++;D.shown=0;if(D.i>=D.lines.length)endDialog();}},
+ dialogInfo:()=>D?{speaker:D.speaker||null,mood:D.mood||null,choices:D.choices||null,sel:D.sel}:null,
+ skipDialog:()=>{while(D){if(D.choices&&D.i===D.lines.length-1){D.shown=D.lines[D.i].length;break;}   // a choice waits for a real pick — skip stops on it
+  D.shown=D.lines[D.i].length;D.i++;D.shown=0;if(D.i>=D.lines.length)endDialog();}},
  teleport:(x,y)=>{G.player.x=x;G.player.y=y;},
  roomClaim:()=>G.room?.claim||null,
  audio:{on:()=>CFG.sound,track:()=>MUS.track,set:setSound,musicOn:()=>CFG.sound&&CFG.musicOn,sfxOn:()=>CFG.sound&&CFG.sfxOn,toggle:toggleAudio},

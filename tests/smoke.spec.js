@@ -179,13 +179,13 @@ test('three notes assemble the invitation: secret ending fires', async ({ page }
   await page.waitForFunction(() => BB.session.events.some(e => e.type === 'ending' && e.secret === true), null, { timeout: 5000 });
 });
 
-test('doll room: Space swings mid-fight, and the locked exit can be fled for free', async ({ page }) => {
+test('doll room: Space throws mid-fight (with the plush), and the locked exit can be fled for free', async ({ page }) => {
   await page.goto(url + '?room=dollroom&seed=1&combat=1&dollSpeed=0&mode=designer');
   await waitRoom(page, 'dollroom');
   await skip(page);
   expect(await page.evaluate(() => BB.state.dolls.length)).toBe(3);
-  // away from doors/items, Space is an attack, not an examine
-  await page.evaluate(() => { BB.teleport(100, 120); BB.press('Space'); });
+  // away from doors/items, Space is an attack, not an examine — she carries the plush here
+  await page.evaluate(() => { BB.state.plush = true; BB.teleport(100, 120); BB.press('Space'); });
   await page.waitForFunction(() => BB.state.atk.cd > 0);
   expect(await page.evaluate(() => BB.dialogOpen())).toBe(false);
   // at the locked exit, Z flees: free by default, on to floor 3
@@ -646,12 +646,16 @@ test('floor 2 hangs the painting set moved down from floor 3', async ({ page }) 
   expect(await page.evaluate(() => !!BB.state.room.items.find(i => i.id === 'note' && i.paint))).toBe(true);
 });
 
-test('floor 1: the little bunny is collectable and she carries it for the rest of the run', async ({ page }) => {
+test('floor 1: TAKE IT collects the little bunny and she carries it for the rest of the run', async ({ page }) => {
   await page.goto(url + '?seed=1&room=floor1&mode=designer');
   await waitRoom(page, 'floor1');
   await skip(page);
   expect(await page.evaluate(() => BB.state.room.deco.map(d => d.k))).toContain('plushLie');
   await useAt(page, 235, 100); // the foot of ROSE's bed, where the plush lies
+  await page.waitForFunction(() => BB.dialogOpen());
+  await skip(page); // fast-forwards to the question and STOPS on the choice
+  expect((await page.evaluate(() => BB.dialogInfo())).choices).toEqual(['TAKE IT', 'LEAVE IT']);
+  await page.evaluate(() => BB.press('KeyZ')); // confirm TAKE IT (default selection)
   await page.waitForFunction(() => BB.state.plush === true);
   expect(await page.evaluate(() => BB.state.room.deco.map(d => d.k))).not.toContain('plushLie'); // taken off the bed
   await skip(page);
@@ -661,6 +665,48 @@ test('floor 1: the little bunny is collectable and she carries it for the rest o
   await page.evaluate(() => BB.goto('floor1'));
   await waitRoom(page, 'floor1');
   expect(await page.evaluate(() => BB.state.room.deco.map(d => d.k))).not.toContain('plushLie'); // never respawns
+});
+
+test('floor 1: LEAVE IT keeps the bunny on the bed and the offer comes back', async ({ page }) => {
+  await page.goto(url + '?seed=1&room=floor1&mode=designer');
+  await waitRoom(page, 'floor1');
+  await skip(page);
+  await useAt(page, 235, 100);
+  await page.waitForFunction(() => BB.dialogOpen());
+  await skip(page);
+  await page.keyboard.press('ArrowRight'); // move the pick to LEAVE IT
+  await page.waitForFunction(() => BB.dialogInfo() && BB.dialogInfo().sel === 1);
+  await page.evaluate(() => BB.press('KeyZ'));
+  await page.waitForFunction(() => !BB.dialogOpen());
+  expect(await page.evaluate(() => BB.state.plush)).toBe(false);
+  expect(await page.evaluate(() => BB.state.room.deco.map(d => d.k))).toContain('plushLie'); // still on the bed
+  await useAt(page, 235, 100); // she can change her mind
+  await page.waitForFunction(() => BB.dialogOpen());
+});
+
+test('mirror reveal auto-closes: the box blinks in and dismisses itself', async ({ page }) => {
+  await page.goto(url + '?seed=2&room=floor3&mode=designer');
+  await waitRoom(page, 'floor3');
+  await skip(page);
+  await useAt(page, 70, 90);
+  await page.waitForFunction(() => BB.dialogOpen());
+  expect((await page.evaluate(() => BB.dialogInfo())).speaker).toBe('mirror');
+  await page.waitForFunction(() => !BB.dialogOpen(), null, { timeout: 3000 }); // no key press: it closes on its own
+});
+
+test('no plush = no attack; with it, a button eye flies and pops a doll', async ({ page }) => {
+  await page.goto(url + '?seed=1&room=dollroom&combat=1&dollSpeed=0&mode=designer');
+  await waitRoom(page, 'dollroom');
+  await skip(page);
+  await page.evaluate(() => { BB.teleport(155, 100); BB.press('KeyX'); }); // empty hands
+  await page.waitForTimeout(150);
+  expect(await page.evaluate(() => BB.state.shots.length + BB.state.atk.cd)).toBe(0); // nothing fired, no cooldown
+  expect(await page.evaluate(() => BB.state.dolls.length)).toBe(3);
+  await page.evaluate(() => { BB.state.plush = true; BB.hold('KeyW', true); });
+  await page.waitForTimeout(120); // face up toward the middle doll at (160,40)
+  await page.evaluate(() => { BB.hold('KeyW', false); BB.press('KeyX'); });
+  await page.waitForFunction(() => BB.state.shots.length === 1);
+  await page.waitForFunction(() => BB.state.dolls.length === 2, null, { timeout: 3000 }); // the shot lands
 });
 
 test('horror player: walking all four directions renders without errors', async ({ page }) => {
